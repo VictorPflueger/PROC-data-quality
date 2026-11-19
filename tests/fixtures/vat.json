@@ -1,0 +1,33 @@
+{
+  "$comment": "VAT ID examples for the format rule DQ-10 (AC-03): one passing and one failing example per country of the world, plus Greece as a test case only. The formats and their sources are in DATA_SOURCES.md. Every example is made up for the test; the rule checks prefix and format, never a check digit.",
+  "countries": [
+    { "country": "DE", "pass": "DE123456789", "fail": "DE12345678", "why": "eight digits instead of nine" },
+    { "country": "FR", "pass": "FR12345678901", "fail": "FR123456789", "why": "the two-character key is missing" },
+    { "country": "GB", "pass": "GB123456789", "fail": "GB12345678", "why": "eight digits instead of nine or twelve" },
+    { "country": "NL", "pass": "NL123456789B01", "fail": "NL12345678", "why": "eight digits and no B suffix" },
+    { "country": "AT", "pass": "ATU12345678", "fail": "AT12345678", "why": "the U after AT is missing" },
+    { "country": "IT", "pass": "IT12345670010", "fail": "IT1234567001", "why": "ten digits instead of eleven" },
+    { "country": "ES", "pass": "ESB12345678", "fail": "ES123456789", "why": "first and last characters both digits, which VIES rules out (correction B1)" },
+    { "country": "CH", "pass": "CHE123456789", "fail": "CHE12345678", "why": "eight digits instead of nine" },
+    { "country": "GR", "pass": "EL123456789", "fail": "GR123456789", "why": "Greece's VAT prefix is EL, not its country code GR" }
+  ],
+  "more": [
+    { "country": "GB", "id": "GB123456789012", "valid": true, "why": "twelve digits (a branch trader)" },
+    { "country": "GB", "id": "GBGD123", "valid": true, "why": "a government department, GD and three digits" },
+    { "country": "GB", "id": "GBHA567", "valid": true, "why": "a health authority, HA and three digits" },
+    { "country": "GB", "id": "GBGD12", "valid": false, "why": "GD with two digits" },
+    { "country": "CH", "id": "CHE-123.456.789 MWST", "valid": true, "why": "the printed form with separators and the German suffix" },
+    { "country": "CH", "id": "CHE-123.456.789 TVA", "valid": true, "why": "the printed form with the French suffix" },
+    { "country": "CH", "id": "CHE 123 456 789 IVA", "valid": true, "why": "the printed form with spaces and the Italian suffix" },
+    { "country": "ES", "id": "ES12345678Z", "valid": true, "why": "a digit first and a letter last" },
+    { "country": "ES", "id": "ESX1234567L", "valid": true, "why": "letters first and last" },
+    { "country": "FR", "id": "FRXX123456789", "valid": true, "why": "a key of two letters" },
+    { "country": "FR", "id": "FR1X123456789", "valid": true, "why": "a key of a digit and a letter" },
+    { "country": "DE", "id": "de 123 456 789", "valid": true, "why": "lower case and spaces are normalised" },
+    { "country": "DE", "id": "ATU12345678", "valid": false, "why": "an Austrian number on a German supplier: the prefix differs" },
+    { "country": "CH", "id": "CH123456789", "valid": false, "why": "the Swiss prefix is CHE" },
+    { "country": "NL", "id": "NL123456789B1", "valid": false, "why": "one digit after B" },
+    { "country": "DE", "id": null, "valid": false, "why": "no VAT ID at all" },
+    { "country": "DE", "id": "", "valid": false, "why": "an empty VAT ID counts as missing" }
+  ]
+}

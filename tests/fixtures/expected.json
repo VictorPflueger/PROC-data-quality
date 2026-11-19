@@ -1,0 +1,479 @@
+{
+  "$comment": "Expected values of the golden cases D1 to D4 and F01 to F15 (build plan, section 11), transcribed by a script from the private build brief. Fractions are exact values written as \"numerator/denominator\"; displays follow the brief's section 5.",
+  "D1": {
+    "note": "Eighteen exceptions in rule order, then record id. Record keys: S2@1000 is \"S2 in 1000\", S1+S5 is \"S1 and S5\".",
+    "exceptions": [
+      {
+        "n": 1,
+        "rule": "DQ-01",
+        "record": "L02",
+        "record_as_written": "L02",
+        "routed_to": "U03",
+        "spend_eur": 8000,
+        "financing_cost_eur": "0",
+        "unpaid": null
+      },
+      {
+        "n": 2,
+        "rule": "DQ-02",
+        "record": "L03",
+        "record_as_written": "L03",
+        "routed_to": "U03",
+        "spend_eur": 5000,
+        "financing_cost_eur": "0",
+        "unpaid": null
+      },
+      {
+        "n": 3,
+        "rule": "DQ-03",
+        "record": "L07",
+        "record_as_written": "L07",
+        "routed_to": "U08",
+        "spend_eur": 1725,
+        "financing_cost_eur": "0",
+        "unpaid": null
+      },
+      {
+        "n": 4,
+        "rule": "DQ-04",
+        "record": "L03",
+        "record_as_written": "L03",
+        "routed_to": "U03",
+        "spend_eur": 5000,
+        "financing_cost_eur": "0",
+        "unpaid": null
+      },
+      {
+        "n": 5,
+        "rule": "DQ-05",
+        "record": "L04",
+        "record_as_written": "L04",
+        "routed_to": "U04",
+        "spend_eur": 3000,
+        "financing_cost_eur": "0",
+        "unpaid": null
+      },
+      {
+        "n": 6,
+        "rule": "DQ-06",
+        "record": "L05",
+        "record_as_written": "L05",
+        "routed_to": "U10",
+        "spend_eur": 4000,
+        "financing_cost_eur": "2160/73",
+        "unpaid": false
+      },
+      {
+        "n": 7,
+        "rule": "DQ-07",
+        "record": "L03",
+        "record_as_written": "L03",
+        "routed_to": "U03",
+        "spend_eur": 5000,
+        "financing_cost_eur": "1800/73",
+        "unpaid": false
+      },
+      {
+        "n": 8,
+        "rule": "DQ-07",
+        "record": "L10",
+        "record_as_written": "L10",
+        "routed_to": "U03",
+        "spend_eur": 7000,
+        "financing_cost_eur": "1344/73",
+        "unpaid": true
+      },
+      {
+        "n": 9,
+        "rule": "DQ-08",
+        "record": "L04",
+        "record_as_written": "L04",
+        "routed_to": "U03",
+        "spend_eur": 3000,
+        "financing_cost_eur": "0",
+        "unpaid": null
+      },
+      {
+        "n": 10,
+        "rule": "DQ-09",
+        "record": "S2@1000",
+        "record_as_written": "S2 in 1000",
+        "routed_to": "U07",
+        "spend_eur": 2000,
+        "financing_cost_eur": "0",
+        "unpaid": null
+      },
+      {
+        "n": 11,
+        "rule": "DQ-10",
+        "record": "S4",
+        "record_as_written": "S4",
+        "routed_to": "U07",
+        "spend_eur": 10000,
+        "financing_cost_eur": "0",
+        "unpaid": null
+      },
+      {
+        "n": 12,
+        "rule": "DQ-10",
+        "record": "S6",
+        "record_as_written": "S6",
+        "routed_to": "U07",
+        "spend_eur": 7000,
+        "financing_cost_eur": "0",
+        "unpaid": null
+      },
+      {
+        "n": 13,
+        "rule": "DQ-11",
+        "record": "S3",
+        "record_as_written": "S3",
+        "routed_to": "U07",
+        "spend_eur": 1725,
+        "financing_cost_eur": "0",
+        "unpaid": null
+      },
+      {
+        "n": 14,
+        "rule": "DQ-11",
+        "record": "S4",
+        "record_as_written": "S4",
+        "routed_to": "U07",
+        "spend_eur": 10000,
+        "financing_cost_eur": "0",
+        "unpaid": null
+      },
+      {
+        "n": 15,
+        "rule": "DQ-12",
+        "record": "S1+S5",
+        "record_as_written": "S1 and S5",
+        "routed_to": "U07",
+        "spend_eur": 28000,
+        "financing_cost_eur": "0",
+        "unpaid": null
+      },
+      {
+        "n": 16,
+        "rule": "DQ-13",
+        "record": "M3",
+        "record_as_written": "M3",
+        "routed_to": "U08",
+        "spend_eur": 10000,
+        "financing_cost_eur": "0",
+        "unpaid": null
+      },
+      {
+        "n": 17,
+        "rule": "DQ-14",
+        "record": "K2",
+        "record_as_written": "K2",
+        "routed_to": "U10",
+        "spend_eur": 10000,
+        "financing_cost_eur": "0",
+        "unpaid": null
+      },
+      {
+        "n": 18,
+        "rule": "DQ-15",
+        "record": "L05",
+        "record_as_written": "L05",
+        "routed_to": "U10",
+        "spend_eur": 4000,
+        "financing_cost_eur": "0",
+        "unpaid": null
+      }
+    ]
+  },
+  "D2": {
+    "Exceptions": {
+      "exact": "18",
+      "display": "18"
+    },
+    "By severity: high, medium, low": {
+      "exact": "6, 11, 1",
+      "display": "6, 11, 1"
+    },
+    "By routed-to person": {
+      "exact": "U03 6, U07 6, U10 3, U08 2, U04 1",
+      "display": "as written"
+    },
+    "Spend in the window (€)": {
+      "exact": "62725",
+      "display": "€62,725"
+    },
+    "Clean spend (€), lines L11 and L12": {
+      "exact": "4000",
+      "display": "€4,000"
+    },
+    "Clean spend share": {
+      "exact": "160/2509",
+      "display": "6.4%"
+    },
+    "Spend with an open exception (€)": {
+      "exact": "58725",
+      "display": "€58,725"
+    },
+    "Financing cost of paying early, last 365 days (€)": {
+      "exact": "5304/73",
+      "display": "€73"
+    },
+    "Of which on unpaid lines (€)": {
+      "exact": "1344/73",
+      "display": "€18"
+    }
+  },
+  "D3": {
+    "Closure rate before the first scan": {
+      "exact": "5/7",
+      "display": "71.4%"
+    },
+    "14-day closure share DQ-01": {
+      "exact": "1/3",
+      "display": "33.3%"
+    },
+    "14-day closure share DQ-02": {
+      "exact": "1/2",
+      "display": "50.0%"
+    },
+    "14-day closure share DQ-07": {
+      "exact": "1",
+      "display": "100.0%"
+    },
+    "14-day closure share DQ-10": {
+      "exact": "none",
+      "display": "no history"
+    },
+    "Monthly inflow DQ-01": {
+      "exact": "4/3",
+      "display": "1.3"
+    },
+    "Monthly inflow DQ-02": {
+      "exact": "2/3",
+      "display": "0.7"
+    },
+    "Monthly inflow DQ-07": {
+      "exact": "2/3",
+      "display": "0.7"
+    },
+    "Monthly inflow DQ-10": {
+      "exact": "1/3",
+      "display": "0.3"
+    },
+    "First scan: entries still found, still routed": {
+      "exact": "H07, H09",
+      "display": "2"
+    },
+    "First scan: closed by re-scan": {
+      "exact": "H03",
+      "display": "1"
+    },
+    "First scan: new entries detected today": {
+      "exact": "16",
+      "display": "16"
+    },
+    "Open exceptions after the first scan": {
+      "exact": "18",
+      "display": "18"
+    },
+    "Closure rate after the first scan": {
+      "exact": "6/7",
+      "display": "85.7%"
+    },
+    "Projected closure rate after fixing L03's material group to MRO-TOOLS": {
+      "exact": "1",
+      "display": "100.0%"
+    }
+  },
+  "D4": {
+    "case": {
+      "id": "C1",
+      "n": 12,
+      "spend_eur_each": 40000,
+      "financing_cost_eur_each": 200,
+      "with_suggestion": 10,
+      "with_suggestion_unpaid": 4,
+      "without_suggestion": 2,
+      "without_suggestion_unpaid": 1,
+      "history": {
+        "closed": 3,
+        "eligible": 6
+      },
+      "inflow_per_month": 2
+    },
+    "note": "Case C1 has twelve exceptions that share one root cause, each with spend affected €40,000 and a one-off financing cost of €200; ten have a deterministic suggestion (four of them on unpaid lines), two have none (one of them unpaid); the case's pooled history shows 3 of 6 eligible exceptions closed within 14 days, and its inflow is 2 a month. Default parameters. Doing nothing leaves the case gaining 24 exceptions a year, which cost about €4,800 a year. Its exceptions cost €2,400 over the last 365 days, which no fix path recovers once paid. C and D start preventing after 20 days. With no history, B and D project 0 closures; with no suggestions, A and C are not applicable.",
+    "paths": [
+      {
+        "path": "A Mass correction",
+        "closed": 10,
+        "spend_covered_eur": 400000,
+        "avoided_now_eur": 800,
+        "prevented_per_year": 0,
+        "future_avoided_eur_per_year": 0,
+        "effort_eur": 650,
+        "days": 5
+      },
+      {
+        "path": "B Owner follow-up",
+        "closed": 6,
+        "spend_covered_eur": 240000,
+        "avoided_now_eur": 500,
+        "prevented_per_year": 0,
+        "future_avoided_eur_per_year": 0,
+        "effort_eur": 600,
+        "days": 14
+      },
+      {
+        "path": "C Mass correction and fix at source",
+        "closed": 10,
+        "spend_covered_eur": 400000,
+        "avoided_now_eur": 800,
+        "prevented_per_year": 24,
+        "future_avoided_eur_per_year": 4800,
+        "effort_eur": 4250,
+        "days": 5
+      },
+      {
+        "path": "D Owner follow-up and fix at source",
+        "closed": 6,
+        "spend_covered_eur": 240000,
+        "avoided_now_eur": 500,
+        "prevented_per_year": 24,
+        "future_avoided_eur_per_year": 4800,
+        "effort_eur": 4200,
+        "days": 14
+      },
+      {
+        "path": "Do nothing",
+        "closed": 0,
+        "spend_covered_eur": 0,
+        "avoided_now_eur": 0,
+        "prevented_per_year": 0,
+        "future_avoided_eur_per_year": 0,
+        "effort_eur": 0,
+        "days": null
+      }
+    ]
+  },
+  "F": [
+    {
+      "id": "F01",
+      "text": "18 exceptions are open.",
+      "pass": true,
+      "offending": [],
+      "note": "Pass"
+    },
+    {
+      "id": "F02",
+      "text": "19 exceptions are open.",
+      "pass": false,
+      "offending": [
+        "19"
+      ],
+      "note": "Fail: `19`"
+    },
+    {
+      "id": "F03",
+      "text": "Clean spend is 6.4% of the spend.",
+      "pass": true,
+      "offending": [],
+      "note": "Pass"
+    },
+    {
+      "id": "F04",
+      "text": "Clean spend is 6% of the spend.",
+      "pass": true,
+      "offending": [],
+      "note": "Pass: 6.4% rounds to 6% at the precision written"
+    },
+    {
+      "id": "F05",
+      "text": "Clean spend is 7% of the spend.",
+      "pass": false,
+      "offending": [
+        "7%"
+      ],
+      "note": "Fail: `7%`"
+    },
+    {
+      "id": "F06",
+      "text": "Paying early cost €73 over the last 365 days.",
+      "pass": true,
+      "offending": [],
+      "note": "Pass"
+    },
+    {
+      "id": "F07",
+      "text": "Paying early cost €75 over the last 365 days.",
+      "pass": false,
+      "offending": [
+        "€75"
+      ],
+      "note": "Fail: `€75`"
+    },
+    {
+      "id": "F08",
+      "text": "€58,725 of spend has an open exception.",
+      "pass": true,
+      "offending": [],
+      "note": "Pass"
+    },
+    {
+      "id": "F09",
+      "text": "€58.7k of spend has an open exception.",
+      "pass": true,
+      "offending": [],
+      "note": "Pass"
+    },
+    {
+      "id": "F10",
+      "text": "€60k of spend has an open exception.",
+      "pass": false,
+      "offending": [
+        "€60k"
+      ],
+      "note": "Fail: `€60k`"
+    },
+    {
+      "id": "F11",
+      "text": "Line L02 has no contract reference although K1 covers it.",
+      "pass": true,
+      "offending": [],
+      "note": "Pass"
+    },
+    {
+      "id": "F12",
+      "text": "Line L99 has no contract reference.",
+      "pass": false,
+      "offending": [
+        "L99"
+      ],
+      "note": "Fail: unknown id `L99`"
+    },
+    {
+      "id": "F13",
+      "text": "Three owners will receive a follow-up.",
+      "pass": true,
+      "offending": [],
+      "note": "Pass: a count in words"
+    },
+    {
+      "id": "F14",
+      "text": "The closure rate is 85.7%, up from 41%.",
+      "pass": false,
+      "offending": [
+        "41%"
+      ],
+      "note": "Fail: `41%`"
+    },
+    {
+      "id": "F15",
+      "text": "The unpaid lines still cost €18,411.",
+      "pass": false,
+      "offending": [
+        "€18,411"
+      ],
+      "note": "Fail: `€18,411`"
+    }
+  ]
+}
