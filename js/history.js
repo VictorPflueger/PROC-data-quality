@@ -5,7 +5,7 @@
 // projection runs the same scan and reconciliation on a copy of the data with approved changes, and
 // is never written to the log. Pure functions; the log passed in is never changed.
 
-import { scan, isLive, matchesFilters } from "./engine.js";
+import { scan, isLive, matchesFilters, context } from "./engine.js";
 
 const COHORT_FROM = 69; // days ago, inclusive
 const COHORT_TO = 14;   // days ago, inclusive
@@ -158,4 +158,27 @@ export function project(world, log, changes, { day = 0, params, rules = null } =
   const s = scan(copy, { day, params, rules, log });
   const reconciliation = reconcile(log, s.exceptions, { day, rules });
   return { scan: s, reconciliation, closure_rate: closureRate(reconciliation.log, day), world: copy };
+}
+
+/**
+ * The data as the exception log stands, before this run's scan: the closure rate, the live entries
+ * (open, routed or accepted) and the spend they touch. The header shows this until a run scans;
+ * a scan then reconciles and the figures follow the scan. Lines count once, however many entries
+ * touch them.
+ */
+export function logState(world, { day = 0, params } = {}) {
+  const c = context(world, { day, params });
+  const log = world.exception_log || [];
+  const live = log.filter((x) => isLive(x.status));
+  const flagged = new Set();
+  for (const x of live) {
+    const e = recordAsException(c, x);
+    if (e) for (const id of e.lines) flagged.add(id);
+  }
+  const spend = c.lines.reduce((t, l) => t + c.eur(l), 0);
+  const clean = c.lines.filter((l) => !flagged.has(l.id)).reduce((t, l) => t + c.eur(l), 0);
+  return {
+    closure_rate: closureRate(log, day), open: live.length, spend_window_eur: spend, clean_spend_eur: clean,
+    clean_share: spend > 0 ? clean / spend : null, open_spend_eur: spend - clean, cohorts: cohorts(log, day)
+  };
 }

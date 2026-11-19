@@ -1,6 +1,6 @@
 # Data Quality Agent: build plan
 
-**Status:** Phase 0 plan of 19 November 2026, waiting for approval. No app code yet.
+**Status:** Phase 0 plan of 19 November 2026, approved by Victor on 19 November 2026 with the recommended defaults (D1 to D7, N1 to N3) and the corrections B1 and B2 of section 1.6. GitHub Pages is on; the `HYGIENE_TERMS` secret cannot be provided, so CI runs the hygiene suite's generic checks (TECH_NOTES §7.2, M1-08). M1 is built on the branch `m1-shell-world-engine`; TECH_NOTES.md records how it went.
 
 This plan turns the build brief into three milestones. The brief decides what to build; this file decides how, in which order, and how each step is proven. Where the plan departs from the brief or from the sister prototypes, it says so and gives the reason. Figures from the brief appear here unchanged; every other figure in this file was measured in Phase 0 and says how. The brief stays outside the repository.
 
@@ -128,13 +128,13 @@ Nothing in the brief is unbuildable from here. Four things wait for you: Pages a
 
 | # | Decision | My recommended default | Why |
 | --- | --- | --- | --- |
-| D1 | Product name and card subtitle | **"Data Quality Agent", subtitle "Procurement data quality"** | The portfolio's name; the subtitle says the domain in three words |
+| D1 | Product name and card subtitle | **"Data Quality Agent", subtitle "Procurement data quality"** | The brief's name; the subtitle says the domain in three words |
 | D2 | Page icon and website card | **Vici's `check` icon in a lilac hexagon cell, kind "prototype"**; the card text comes to you in M3 | `check` exists in Vici v1.0.0 (`vc-icon--check`); lilac is the prototypes' colour on the website |
 | D3 | German interface | **Not in version 1** | The four sisters are English; the shell's i18n path is the Duty Radar's if you want it later |
 | D4 | Cost of capital, payment assumption, effort parameters | **The brief's defaults** (6 % a year, invoices paid on the order's terms, the parameters of §6.7), each labelled as an assumption | They reproduce D4; the Method dialog shows them and Live mode can change them, logged |
 | D5 | One world with the Price Variance Agent | **Yes**: same company, company codes, plants, supplier accounts and taxonomy; each prototype builds its own world, with no runtime dependency | One story across the procurement prototypes |
 | D6 | API key for recording simulations | **Six authored scripts**, marked `"source": "authored"`; you record live runs later and I curate them as `"recorded"` | No key here, and I never ask for one |
-| D7 | Production-path panel | **In the intro window's last part and in the README**, with the portfolio's products and no client | One small diagram: where each piece would run with real data |
+| D7 | Production-path panel | **In the intro window's last part and in the README**, with the products of the reference architecture and no client | One small diagram: where each piece would run with real data |
 | N1 | Who defines the shared world | **This build, in M1**: `tools/globalcorp_base.mjs`, plain data (company codes, four plants, the 124 accounts with Rebate Hunter's ids, names, cities, countries, currencies and categories, the material-group taxonomy). The Price Variance build copies the file unchanged, and a byte comparison joins each repository's parity test once both exist | Its repository is empty today; whichever build goes first would otherwise invent the taxonomy alone |
 | N2 | Scope of DQ-13 and DQ-14 | **Only materials and contracts with order lines in the analysis window**, like the supplier rules | A dormant material or an expired, unused contract carries no spend and no follow-up worth a case; it keeps the honeycomb about money. D1 to D4 are unchanged: M3 and K2 both have lines |
 | N3 | What the *Open exceptions* tile counts | **Every exception not closed and not dismissed** (open, routed and accepted), as D3's 18 requires; the status word *open* keeps its meaning (found, not yet routed) and the tile's note says "open, routed or accepted" | The tile then agrees with clean spend, which excludes the same three statuses |

@@ -109,6 +109,8 @@ expect("B01", "The unpaid lines cost €18.41.", true, [], small);
 expect("B02", "The unpaid lines cost €18.", false, ["€18"], small);
 expect("B03", "The unpaid lines cost €18.", true, [], small, { wholeEuroFloor: true });
 expect("B04", "The unpaid lines cost €19.", false, ["€19"], small, { wholeEuroFloor: true });
+// The proposed floor leaves the golden cases as they are: F01 to F15 give the same results with it.
+for (const f of EXPECTED.F) expect(`${f.id}+floor`, f.text, f.pass, f.offending, run, { wholeEuroFloor: true });
 // Currency: a pound figure is not a euro figure.
 const gbp = new KnownFigures();
 gbp.amount(1500, "GBP");

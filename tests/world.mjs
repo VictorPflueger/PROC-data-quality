@@ -46,9 +46,20 @@ for (const c of res.checks) check(c.ok, `${c.name}: ${c.detail}`);
 const fields = (x) => JSON.stringify([x.id, x.name, x.city, x.country, x.currency, x.category]);
 const inWorld = WORLD.suppliers.filter((s) => s.origin === "Rebate Hunter").map(fields).join("\n");
 check(inWorld === ACCOUNTS.map(fields).join("\n"), `the world's ${ACCOUNTS.length} Rebate Hunter accounts equal tools/globalcorp_base.mjs`);
+// The base names the commit it was taken from; the checkout's history gives that commit's world, so a
+// later change to Rebate Hunter's world shows up here only once the base is taken again on purpose.
+const BASE_COMMIT = "73c00f8";
 const ref = [process.env.PARITY_REF, path.resolve(APP_ROOT, "..", "PROC-Rebate-Hunter")].find((d) => d && fs.existsSync(path.join(d, "data", "world.js")));
+const rhWorld = (dir) => {
+  const r = spawnSync("git", ["-C", dir, "show", `${BASE_COMMIT}:data/world.js`], { encoding: "utf8", maxBuffer: 256 * 1024 * 1024 });
+  const text = r.status === 0 ? r.stdout : fs.readFileSync(path.join(dir, "data", "world.js"), "utf8");
+  const ctx = { window: {} };
+  vm.runInNewContext(text, ctx);
+  return { W: ctx.window.WORLD, at: r.status === 0 ? `at ${BASE_COMMIT}` : `its working tree, commit ${BASE_COMMIT} not in the checkout` };
+};
+check(fs.readFileSync(path.join(APP_ROOT, "tools", "globalcorp_base.mjs"), "utf8").includes(`at commit ${BASE_COMMIT}`), `tools/globalcorp_base.mjs names commit ${BASE_COMMIT} as its source`);
 if (ref) {
-  const W = load(path.join(ref, "data", "world.js")).WORLD;
+  const { W, at } = rhWorld(ref);
   const LEGAL = new Set("gmbh ag se sa sas sarl ltd limited plc bv nv spa srl kg co inc".split(" "));
   const norm = (s) => String(s).toLowerCase().replace(/\./g, "").replace(/[^\p{L}\p{N}]+/gu, " ").trim().split(/\s+/).filter((t) => t && !LEGAL.has(t)).join(" ");
   const real = new Set(W.groups.filter((g) => g.real).map((g) => g.id));
@@ -58,7 +69,7 @@ if (ref) {
   const groups = new Map();
   for (const v of outside) { const k = `${norm(v.name)}|${v.country}`; if (!groups.has(k)) groups.set(k, []); groups.get(k).push(v); }
   const kept = [...groups.values()].map((g) => g.sort((x, y) => Number(x.id) - Number(y.id))[0]).sort((x, y) => Number(x.id) - Number(y.id));
-  check(outside.length === 143 && kept.length === 124, `Rebate Hunter's world (${path.relative(APP_ROOT, ref)}): ${outside.length} accounts outside the five groups, ${kept.length} after one per duplicate-name group`);
+  check(outside.length === 143 && kept.length === 124, `Rebate Hunter's world (${path.relative(APP_ROOT, ref) || "."}, ${at}): ${outside.length} accounts outside the five groups, ${kept.length} after one per duplicate-name group`);
   check(kept.map((v) => JSON.stringify([v.id, v.name, v.city, v.country, v.currency, v.category])).join("\n") === ACCOUNTS.map(fields).join("\n"), "tools/globalcorp_base.mjs equals the accounts re-derived from Rebate Hunter's world");
 } else notes.push("SKIP  no Rebate Hunter checkout next to this repository (or PARITY_REF): the base was not re-derived");
 

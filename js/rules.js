@@ -46,7 +46,7 @@ export const RULES = Object.freeze([
     fires: "Payment terms shorter than the agreed terms.",
     responsible: "the line's buyer", suggestion: "The agreed terms.", financing: true },
   { id: "DQ-08", name: "Ordered from a blocked supplier", dimension: "Validity", severity: "high", product: "po_line", record: "order line",
-    fires: "Ordered on or after the day the supplier's purchasing block started (for example through an interface, or in a purchasing organisation where the block was not set).",
+    fires: "The order day is on or after the start of the supplier's purchasing block: the order got through, say by an interface or in a purchasing organisation the block does not cover.",
     responsible: "the line's buyer", suggestion: null, financing: false },
   { id: "DQ-09", name: "No payment terms in company code", dimension: "Completeness", severity: "high", product: "supplier", record: "supplier in a company code",
     fires: "The supplier has order lines in a company code but no payment terms there.",

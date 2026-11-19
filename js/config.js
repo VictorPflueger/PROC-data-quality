@@ -11,17 +11,17 @@ export const APP = {
 export const ANTHROPIC = {
   messagesUrl: "https://api.anthropic.com/v1/messages",
   modelsUrl: "https://api.anthropic.com/v1/models?limit=100",
-  // 2026-10-21 is the newest version (TECH_NOTES §1); every sister app still sends 2023-06-01, and
+  // 2026-10-21 is the newest version (TECH_NOTES §2); every sister app still sends 2023-06-01, and
   // switching is this one line, best done in all prototypes together.
   apiVersion: "2023-06-01",
-  // Header that enables CORS for direct browser calls (verified by live probe, TECH_NOTES §1).
+  // Header that enables CORS for direct browser calls (verified by live probe, TECH_NOTES §3).
   browserHeader: "anthropic-dangerous-direct-browser-access",
   // The shared client and cost meter still know the server-side web search tool (the sister apps
   // use it); this app never sends it, so it never costs anything here.
   webSearchTool: { type: "web_search_20250305", name: "web_search", max_uses: 5 },
   webSearchUsdPer1000: 10,
   // Spend limits are set per workspace (not per key, and not on the Default Workspace), so the
-  // advice is: a dedicated workspace with a monthly spend limit, and a key scoped to it (TECH_NOTES §1).
+  // advice is: a dedicated workspace with a monthly spend limit, and a key scoped to it (TECH_NOTES §3).
   consoleKeysUrl: "https://platform.claude.com/settings/keys",
   consoleWorkspacesUrl: "https://platform.claude.com/settings/workspaces"
 };
@@ -47,7 +47,7 @@ export const MODELS = [
 ];
 export const DEFAULT_MODEL = "claude-sonnet-5-5";
 
-// Live-agent guardrails (TECH_NOTES §4). A run stops at whichever limit it reaches first.
+// Live-agent caps (TECH_NOTES §1). A run stops at whichever limit it reaches first.
 export const AGENT = {
   maxSteps: 40,          // model calls per run
   budgetEur: 3.0,        // hard cost cap per run
@@ -71,7 +71,7 @@ export const OPEN_DATA = {};
 const P = `${APP.id}.`;
 export const STORAGE = {
   apiKey: `${P}anthropic.key`,          // sessionStorage: this tab only
-  diagnostics: `${P}diag`,              // sessionStorage: checks that failed recently
+  diagnostics: `${P}diag`,              // sessionStorage: checks that failed recently (unused until a module needs it)
   model: `${P}model`,                   // sessionStorage
   speed: `${P}speed`,                   // sessionStorage
   sessionCost: `${P}sessionCostEur`,    // sessionStorage: live spend in this tab

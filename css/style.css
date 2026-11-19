@@ -275,3 +275,34 @@ html { font-size: clamp(93.75%, 0.48vw + 50%, 112.5%); }
 @media (forced-colors: active) {
   .status-pill[data-tone] .dot, .status-pill .dot, .mode-badge[data-mode="live"] .mode-dot { forced-color-adjust: none; background-color: CanvasText; }
 }
+
+/* ------------------------------------------------------------------------------------------ */
+/* App-specific: not part of the shared shell (tests/parity.mjs compares the file above this)  */
+/* ------------------------------------------------------------------------------------------ */
+
+/* "Fictional company, no client data" beside the AI disclosure: a plain tag (ink on the neutral
+   tint); on small laptops it keeps "Fictional company", and its title says the rest. */
+.fiction-note { white-space: nowrap; }
+@media (max-width: 1500px) {
+  .fiction-note .long { display: none; }
+}
+
+/* The production path in the intro window (decision D7): six steps in a row, each a hexagon. */
+.intro-modal .intro-value + h3 { margin-top: 20px; }
+.intro-path-lead { margin: 0 0 8px; color: var(--vc-text-muted); }
+.prod-path { list-style: none; margin: 0 0 12px; padding: 0; display: grid; grid-template-columns: repeat(6, minmax(0, 1fr)); gap: 8px; }
+.prod-step { display: flex; flex-direction: column; align-items: flex-start; gap: 4px; min-width: 0; position: relative; }
+.prod-hex {
+  display: inline-grid; place-items: center; width: calc(1.9rem * 1.1547); height: 1.9rem;
+  clip-path: var(--vc-hex); background: var(--vc-neutral-bg); color: var(--vc-neutral-text);
+  font-weight: 700; font-variant-numeric: tabular-nums;
+}
+.prod-name { color: var(--vc-text); font-size: var(--vc-font-size-sm); line-height: 1.2; }
+.prod-role { color: var(--vc-text-muted); font-size: var(--fs-xs); line-height: 1.25; }
+@media (max-width: 1100px) {
+  .prod-path { grid-template-columns: repeat(3, minmax(0, 1fr)); }
+}
+
+/* Diagnostics: the parameters, read-only. */
+.params-table { max-width: 560px; }
+.params-table .num { text-align: right; font-variant-numeric: tabular-nums; white-space: nowrap; }
