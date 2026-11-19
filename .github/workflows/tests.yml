@@ -16,7 +16,8 @@ concurrency:
 
 jobs:
   node:
-    name: Colour system, page icon, Vici's files, world, unit, engine, audit, VAT, policy, hygiene and parity (Node.js only)
+    # GitHub cuts job names at 100 characters.
+    name: Node.js suites (design, world, unit, engine, audit, VAT, policy, hygiene, parity)
     # Pinned image: Playwright 1.56's system dependencies are known to install on Ubuntu 24.04.
     runs-on: ubuntu-24.04
     timeout-minutes: 10

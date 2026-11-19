@@ -25,7 +25,7 @@ Scope: the shared shell with its two adapted modules, the fictional world with i
 - [x] G5: AC-05, the world builder writes the same bytes twice and data/world.js is its output; the shared base keeps one account per duplicate-name group; every scenario's case appears as planted and equals its frozen reference figures; the whole world's clean spend share is recorded; no VAT ID passes a published check digit; the log agrees with the data
   CHECK: node tests/world.mjs
   EXPECT: WORLD OK
-  EVIDENCE: automatic-evidence=v1; definition-sha256=6bbf52f45304fe7b7ff95f23bab95a14222b87cf6c9476b2190271b89c579818; exit=0; EXPECT=matched; output-sha256=4aaed582cd161d62f65e5158d811b3cf69fd3cbf61c0b4623eb4f8e0a6e7fb30; output-bytes=3230; shell=/bin/sh; cwd=/home/claude/proc-data-quality; path=14bdffb0e8ca/16 entries
+  EVIDENCE: automatic-evidence=v1; definition-sha256=6bbf52f45304fe7b7ff95f23bab95a14222b87cf6c9476b2190271b89c579818; exit=0; EXPECT=matched; output-sha256=04af1cf84ee3670db8bcbf0a9eba6324dedf638e27b7d9191059229c7a176356; output-bytes=3230; shell=/bin/sh; cwd=/home/claude/proc-data-quality; path=14bdffb0e8ca/16 entries
 
 - [x] G6: AC-06, the shared shell matches Rebate Hunter's main with exactly js/handover.js and js/progress.js adapted, both listed in REVIEW.md, and vici/ byte for byte
   CHECK: node tests/parity.mjs
@@ -60,4 +60,4 @@ Scope: the shared shell with its two adapted modules, the fictional world with i
 - [x] G12: every suite of tests/run-all.mjs passes in one run, none skipped
   CHECK: node tests/run-all.mjs
   EXPECT: ALL SUITES PASSED
-  EVIDENCE: automatic-evidence=v1; definition-sha256=44b70cde5d3146c4d6e0f2ec1e50b1fe0c51ec72c748b6d4cc7bce3ddf8692de; exit=0; EXPECT=matched; output-sha256=404840cb78ab8a654da069db290312c61defbaca98923c9f9c1a943fe7c54325; output-bytes=42937; shell=/bin/sh; cwd=/home/claude/proc-data-quality; path=14bdffb0e8ca/16 entries
+  EVIDENCE: automatic-evidence=v1; definition-sha256=44b70cde5d3146c4d6e0f2ec1e50b1fe0c51ec72c748b6d4cc7bce3ddf8692de; exit=0; EXPECT=matched; output-sha256=92186d73d653769fddc39e18ec85567e975fc2ae88870e0e47b45e2a1d1d93b5; output-bytes=42937; shell=/bin/sh; cwd=/home/claude/proc-data-quality; path=14bdffb0e8ca/16 entries
