@@ -1,14 +1,12 @@
 // Control bar: start, scenario picker, live sweep, model, replay speed, status, abort, reset, diagnostics.
-// Version 0.1 has no runs yet: Start agent and Live sweep say so and stay disabled (RUNS_AVAILABLE).
+// Live sweep and Custom what-if need the live agent; the model applies to Live, the replay speed to
+// Simulation.
 
 import { h, setDisabled, isDisabled, withTooltip } from "./dom.js";
 import { icon } from "./icons.js";
 import { MODELS } from "./config.js";
 import { isRunning, isFinished } from "./state.js";
 
-/** Agent runs (Simulation and Live) arrive with version 0.2; until then the run controls explain that. */
-export const RUNS_AVAILABLE = false;
-const NO_RUNS = "Agent runs arrive in version 0.2. This version holds the rules, the engine and the data: open Diagnostics to check them.";
 import { runStateLabel, onAwaitedChange } from "./handover.js";
 
 const STATE_TONE = {
@@ -91,15 +89,14 @@ export function createControls(root, scenarios, handlers) {
     const live = s.mode === "live";
 
     startBtn.lastChild.textContent = finished ? "New run" : "Start agent";
-    setDisabled(startBtn, running || !RUNS_AVAILABLE, RUNS_AVAILABLE ? "A run is in progress. Abort it or wait until it finishes." : NO_RUNS);
+    setDisabled(startBtn, running, "A run is in progress. Abort it or wait until it finishes.");
 
     scenarioDd.setValue(s.entry === "custom" ? "custom" : s.scenarioId, s.entry === "custom" ? `Custom: ${shorten(s.customText, 34)}` : scenarioLabel);
     scenarioDd.setDisabled(running, "Locked while the agent runs.");
-    scenarioDd.setItemDisabled("custom", (sim && !finished) || !RUNS_AVAILABLE, RUNS_AVAILABLE ? "Requires Live mode. Reset to switch modes." : NO_RUNS);
+    scenarioDd.setItemDisabled("custom", sim && !finished, "Requires Live mode. Reset to switch modes.");
 
     // The sweep scans every rule and investigates the first case: Live mode only.
-    setDisabled(scanBtn, running || (sim && !finished) || !RUNS_AVAILABLE,
-      !RUNS_AVAILABLE ? NO_RUNS : running ? "Locked while the agent runs." : "Requires Live mode. Reset to switch modes.");
+    setDisabled(scanBtn, running || (sim && !finished), running ? "Locked while the agent runs." : "Requires Live mode. Reset to switch modes.");
 
     const model = MODELS.find((m) => m.id === s.model) || MODELS[0];
     modelDd.setValue(model.id, model.label);

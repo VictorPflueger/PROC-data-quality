@@ -9,9 +9,8 @@ export const NAME = "Data Quality Agent";
  * Colour pairs only this prototype draws (the shared shell's pairs are in tests/tokens.mjs):
  * [what, foreground token, background token, kind]. kind "text" needs 4.5:1, "mark" (a line, an icon,
  * a control's border, a bar) 3:1 (WCAG 2.2, 1.4.3 and 1.4.11). Tokens are Vici's, without "--vc-".
- * Version 0.1 draws the board's rules neutral; the state colours of the rules arrive with the runs.
- * Decorative outlines (cards, table rules, a hexagon's tint behind its number) carry no information
- * and are not listed, as in the shared shell's pairs.
+ * Decorative outlines (cards, table rules, a cell's rim in its state's border colour) carry no
+ * information and are not listed, as in the shared shell's pairs.
  */
 export const COLOUR_PAIRS = [
   // The data-quality board: its canvas (bg-sunken) holds cards on the surface.
@@ -19,6 +18,26 @@ export const COLOUR_PAIRS = [
   ["Rule details, card notes and the cohort table's dates", "text-muted", "surface", "text"],
   ["A rule's hexagon before a scan: its number (neutral)", "neutral-text", "neutral-bg", "text"],
   ["The cohort table's figures and its total row", "text", "surface", "text"],
+  // The honeycomb's cells after a scan: id, count, name and mark on the state's tint.
+  ["A high-severity rule with open exceptions: words and cross", "danger-text", "danger-bg", "text"],
+  ["A medium- or low-severity rule with open exceptions: words and bar and dot", "warning-text", "warning-bg", "text"],
+  ["A rule with nothing open: words and tick", "success-text", "success-bg", "text"],
+  ["What the agent reads: the fjord rim of a cell", "info-solid", "surface", "mark"],
+  ["The legend's warning mark", "warning-text", "surface", "mark"],
+  ["The legend's danger mark", "danger-solid", "surface", "mark"],
+  ["The legend's success mark", "success-solid", "surface", "mark"],
+  // People: pips by rule.
+  ["A high-severity pip", "danger-solid", "surface", "mark"],
+  ["A medium- or low-severity pip's outline", "warning-text", "surface", "mark"],
+  // The weekly cohorts' chart.
+  ["Detected: line and hexagon markers", "text", "surface", "mark"],
+  ["Closed: line and hexagon markers", "success-solid", "surface", "mark"],
+  ["Still open: dashed line and outlined markers", "warning-text", "surface", "mark"],
+  ["The chart's direct labels: closed", "success-text", "surface", "text"],
+  ["The chart's direct labels: still open", "warning-text", "surface", "text"],
+  ["The chart's axis labels", "text-muted", "surface", "text"],
+  // The review of AI-suggested values: the AI's words in lilac.
+  ["The words a suggestion rests on, marked in the short text and listed", "feature-text", "feature-bg", "text"],
   // The console's empty state and the scenario's tip.
   ["The scenario's tip on its quiet fill", "text", "bg-subtle", "text"],
   ["The tip's note", "text-muted", "bg-subtle", "text"],
@@ -40,10 +59,12 @@ export const SEPARATIONS = [
 ];
 
 /**
- * The hexagon test's tour of the app (tests/hexagon.mjs): the main states of version 0.1, which has no
- * runs yet: the intro, the idle board, Diagnostics, the scenario menu, the drawer's three tabs. The
- * page has just been opened, without SKIP_INTRO, so the intro opens by itself. visit(name, { settle })
- * checks the page as it is, settle ms (250) after the step.
+ * The hexagon test's tour of the app (tests/hexagon.mjs): the intro, the idle board, Diagnostics, the
+ * scenario menu, the drawer's three tabs, and the main states of a Simulation run of scenario 3 (the
+ * review of AI-suggested values, the case card, the honeycomb with states, a cell's exceptions, the
+ * people view, the fix paths, the outbox and the report). The page has just been opened, without
+ * SKIP_INTRO, so the intro opens by itself. visit(name, { settle }) checks the page as it is, settle
+ * ms (250) after the step.
  */
 export async function hexagonTour(page, visit) {
   await page.waitForSelector('html[data-boot="ready"]', { timeout: 20000 });
@@ -52,6 +73,7 @@ export async function hexagonTour(page, visit) {
   await page.keyboard.press("Escape");
   await page.waitForSelector(".intro-modal", { state: "detached", timeout: 5000 });
   await visit("idle board");
+  await page.click("#cohort-details > summary");
   await page.locator("#cohort-table").scrollIntoViewIfNeeded();
   await visit("idle board, weekly cohorts");
   await page.click("#btn-diagnostics");
@@ -62,7 +84,7 @@ export async function hexagonTour(page, visit) {
   await page.click("#dd-scenario");
   await page.waitForSelector(".dropdown-menu:not([hidden])", { timeout: 5000 });
   await visit("scenario menu");
-  await page.keyboard.press("Escape");
+  await page.click('.dropdown-menu [data-id="SC-UNCLASSIFIED"]');
   for (const tab of ["options", "outbox", "audit"]) {
     await page.click(`#tab-${tab}`);
     await page.waitForSelector(`#panel-${tab}:not([hidden])`, { timeout: 5000 });
@@ -72,6 +94,42 @@ export async function hexagonTour(page, visit) {
   await page.click("#btn-about");
   await page.waitForSelector(".intro-modal", { timeout: 5000 });
   await visit("how it works");
+  await page.keyboard.press("Escape");
+  await page.waitForSelector(".intro-modal", { state: "detached", timeout: 5000 });
+  // A Simulation run of scenario 3, through its review, decision and drafts.
+  await page.click("#btn-start");
+  await page.waitForSelector(".mode-modal", { timeout: 5000 });
+  await visit("mode dialog");
+  await page.click("#btn-mode-simulation");
+  await page.click(".segmented button[aria-label='Replay speed ×4']");
+  await page.waitForSelector(".review-modal", { timeout: 60000 });
+  await visit("review of AI-suggested values", { settle: 600 });
+  await page.click("#btn-review-approve-all");
+  await page.click("#btn-review-confirm");
+  await page.waitForSelector("#console .case-card", { timeout: 60000 });
+  await visit("case card and the honeycomb with states");
+  await page.click("#cell-DQ-02");
+  await page.waitForSelector("#ex-card:not([hidden])", { timeout: 5000 });
+  await visit("a cell's exceptions");
+  await page.click("#view-people");
+  await visit("people view");
+  await page.click("#view-rules");
+  await page.waitForSelector('.option-card[data-recommended="true"] [data-action="approve"]', { timeout: 60000 });
+  await visit("fix paths");
+  await page.click('.option-card[data-recommended="true"] [data-action="approve"]');
+  for (;;) {
+    if (await page.locator(".entry[data-end]").count()) break;
+    const pending = page.locator('.action-card[data-status="pending"] [data-action="approve"]');
+    if (await pending.count()) {
+      if (!(await page.locator('.action-card[data-status="approved"]').count())) await visit("outbox with drafts");
+      await pending.first().click();
+    }
+    await page.waitForTimeout(200);
+  }
+  await visit("run complete with its report");
+  await page.click("#btn-open-report");
+  await page.waitForSelector(".report-modal", { timeout: 5000 });
+  await visit("the report");
   await page.keyboard.press("Escape");
 }
 

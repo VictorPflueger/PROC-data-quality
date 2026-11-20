@@ -1,20 +1,23 @@
 // Self-tests run from the presenter's browser: the Claude API's reachability (or the stored key,
 // with the free model list), the security policy, key handling and storage, and the world's
-// integrity checks (js/world_check.js) against the frozen reference figures.
+// integrity checks (js/world_check.js) against the frozen reference figures, and every simulation
+// script under the live guardrails (js/sim_check.js).
 
 import { ANTHROPIC, APP, STORAGE } from "./config.js";
 import { checkKey, probeEndpoint } from "./anthropic.js";
 import { getKey, redactSecrets } from "./keystore.js";
 import { checkWorld } from "./world_check.js";
+import { checkScripts } from "./sim_check.js";
 
 /** The security policy of the page, exactly (TECH_NOTES §4). */
 export const EXPECTED_POLICY = "default-src 'self'; script-src 'self'; style-src 'self'; img-src 'self' data:; font-src 'self'; connect-src https://api.anthropic.com; object-src 'none'; base-uri 'none'; form-action 'none'";
 
 export const TESTS = [
-  { id: "anthropic", label: "Claude API", host: "api.anthropic.com", purpose: "The live agent (version 0.2): reachability, or your key with the free model list" },
+  { id: "anthropic", label: "Claude API", host: "api.anthropic.com", purpose: "The live agent: reachability, or your key with the free model list" },
   { id: "policy", label: "Security policy", host: "local", purpose: "The page may connect to api.anthropic.com only and loads nothing from another site" },
   { id: "privacy", label: "Key and storage", host: "local", purpose: "A key stays in this tab only, under this app's own name, and never reaches an export" },
-  { id: "world", label: "World data integrity", host: "local", purpose: "The fictional company, the six scenarios and the frozen reference figures" }
+  { id: "world", label: "World data integrity", host: "local", purpose: "The fictional company, the six scenarios and the frozen reference figures" },
+  { id: "scripts", label: "Simulation scripts", host: "local", purpose: "Every scripted run passes the live guardrails along each decision path" }
 ];
 
 const KEY_LIKE = /sk-ant-(?!\[REDACTED\])[A-Za-z0-9_-]{8,}/;
@@ -66,6 +69,18 @@ const RUNNERS = {
     else notes.push("key redaction checked");
     const text = issues.length ? `${issues.join("; ")}.` : `${notes.join("; ")}.`;
     return { status: issues.length ? "fail" : "pass", ms: null, detail: text.charAt(0).toUpperCase() + text.slice(1) };
+  },
+  async scripts() {
+    const started = performance.now();
+    const res = await checkScripts(globalThis.WORLD, globalThis.SIM_RUNS || {}, { scenarios: globalThis.SCENARIOS || [] });
+    const passed = res.results.filter((r) => r.ok).length;
+    const runs = res.results.reduce((t, r) => t + r.runs.length, 0);
+    const bad = res.results.find((r) => !r.ok);
+    const why = bad ? (bad.problems[0] || bad.runs.find((x) => !x.ok)?.problems[0] || "a decision path failed") : "";
+    return {
+      status: res.ok ? "pass" : "fail", ms: Math.round(performance.now() - started),
+      detail: res.ok ? `${passed} of ${res.results.length} scripts pass the live guardrails along every decision path (${runs} runs through the live tools).` : `${passed} of ${res.results.length} scripts pass; ${bad.id}: ${why}.`
+    };
   },
   async world() {
     const started = performance.now();

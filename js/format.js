@@ -50,3 +50,15 @@ export function dayOfDate(date, today = new Date()) {
   const base = Date.UTC(today.getFullYear(), today.getMonth(), today.getDate());
   return Math.round((date.getTime() - base) / 86400000);
 }
+
+/** Run time as minutes and seconds ("00:03", "12:45"). */
+export function clock(ms) {
+  const s = Math.max(0, Math.floor(Number(ms) / 1000));
+  return `${String(Math.floor(s / 60)).padStart(2, "0")}:${String(s % 60).padStart(2, "0")}`;
+}
+
+/** The clock time of an ISO timestamp, local ("14:03:07"). */
+export function timeOfDay(iso) {
+  const d = new Date(iso);
+  return Number.isNaN(d.getTime()) ? "—" : d.toLocaleTimeString("en-GB", { hour12: false });
+}

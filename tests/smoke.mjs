@@ -1,10 +1,11 @@
-// Smoke test in Chromium (Playwright): the page of version 0.1 in the two themes at 1920 × 1080 and
-// 1280 × 720. It boots without a page error, a console error, a security-policy violation or a request
-// to another site, without horizontal scrolling; its header tiles and weekly cohorts show the engine's
-// figures for the exception log; the fifteen rules are on the board; the run controls say that runs
-// arrive in version 0.2; How it works opens by itself once; Diagnostics' own checks pass; choosing a
-// scenario shows its tip; Reset keeps the figures; every storage key starts with "dq." (or is Vici's
-// "vc-theme"); a missing data file is reported on the boot screen. Screenshots go to DQ_TEST_OUT.
+// Smoke test in Chromium (Playwright): the idle page in the two themes at 1920 × 1080 and 1280 × 720.
+// It boots without a page error, a console error, a security-policy violation or a request to another
+// site, without horizontal scrolling; its header tiles and weekly cohorts show the engine's figures for
+// the exception log; the fifteen rules are on the board, neutral before a scan; Start agent is ready
+// and Live sweep and Custom what-if are offered; How it works opens by itself once; Diagnostics' own
+// checks pass; choosing a scenario shows its tip; Reset keeps the figures; every storage key starts
+// with "dq." (or is Vici's "vc-theme"); a missing data file is reported on the boot screen. Runs are
+// the other suites' (sims, live, accept). Screenshots go to DQ_TEST_OUT.
 // Usage: node tests/smoke.mjs                 (all cases)
 //        node tests/smoke.mjs boot diagnostics (only these cases)
 import fs from "node:fs";
@@ -90,11 +91,12 @@ try {
         check(JSON.stringify(rows.map((r) => r.slice(1))) === JSON.stringify(want), `${label}: the eight weekly cohorts equal the engine's`);
         check(await text(s.page, "#cohort-rate") === pct1(expected.closure_rate.value), `${label}: the cohorts' total is the closure rate`);
         // The fifteen rules, by data product, neutral before a scan.
-        const rules = await s.page.$$eval(".rule-item", (els) => els.map((el) => [el.dataset.rule, el.dataset.state]));
+        const rules = await s.page.$$eval(".hex-cell", (els) => els.map((el) => [el.dataset.rule, el.dataset.state]));
         check(JSON.stringify(rules.map((r) => r[0]).sort()) === JSON.stringify(RULES.map((r) => r.id).sort()) && rules.every((r) => r[1] === "neutral"), `${label}: the fifteen rules, all neutral`);
-        // The run controls: disabled, with the reason as their tooltip.
-        const start = await s.page.$eval("#btn-start", (b) => [b.getAttribute("aria-disabled"), b.title || b.getAttribute("data-reason") || ""]);
-        check(start[0] === "true" && /version 0\.2/.test(start[1]), `${label}: Start agent says that runs arrive in version 0.2 (${start.join(" / ")})`);
+        // The run controls: Start agent and Live sweep ready before a run.
+        const start = await s.page.$eval("#btn-start", (b) => b.getAttribute("aria-disabled"));
+        const sweep = await s.page.$eval("#btn-scan", (b) => b.getAttribute("aria-disabled"));
+        check(start !== "true" && sweep !== "true", `${label}: Start agent and Live sweep are ready (${start} / ${sweep})`);
         // The header's honesty: the AI disclosure and the fiction note.
         const header = await text(s.page, ".app-header");
         check(/AI system/.test(header) && /Fictional company/.test(header), `${label}: the header says AI system and Fictional company`);
@@ -169,7 +171,7 @@ try {
     check((await text(s.page, ".tip-text")).includes(SCENARIOS[2].tip), "scenario: choosing scenario 3 shows its tip");
     check((await text(s.page, "#dd-scenario")).includes(SCENARIOS[2].title), "scenario: the menu shows the choice");
     const custom = await s.page.$eval('.dropdown-menu .vc-menu__item[data-id="custom"]', (el) => el.getAttribute("aria-disabled"));
-    check(custom === "true", "scenario: Custom what-if waits for version 0.2");
+    check(custom !== "true", "scenario: Custom what-if is offered before a run");
     await guards("scenario", s);
     await s.context.close();
   }
