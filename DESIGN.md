@@ -1,97 +1,51 @@
-# Data Quality Agent — design
+# Design
 
-How the page looks and why, on Vici, Victor Pflüger's design system. This file grew with each milestone: version 0.2.0 added the board's states, the people view, the cohort chart, the review dialog, the options and the outbox; version 1.0.0 adds the Method dialog and the exports (section 9), the layout on laptops and projectors (section 4), keyboard, focus and motion (section 10), and the layout and design suites (section 6).
+How the screen is built, and why. The page follows Vici, Victor Pflüger's design system (`vici/`), and is written for someone in a customer meeting with no time, background or interest in the machinery.
 
-## 1. The basis
+## 1. One question per screen
 
-- **Vici v1.0.0**, copied unchanged into `vici/` (its stylesheet, script, fonts, icons and marks), loaded before the app's own CSS. Vici sits in cascade layers, so the app's rules refine it without `!important`.
-- **The shared shell** of the sister prototypes (REVIEW.md, Part 2): header, control bar, console, drawer, dialogs and boot screen, with Rebate Hunter's styles. This app adds `css/board.css` (the board), `css/agent.css` (the console's plain sentences, the case card, the review, the fix-path cards' details) and a marked block at the end of `css/style.css`.
-- **Two themes.** Light and dark follow Vici's tokens; the choice is stored under `vc-theme`, the key all of Victor's pages share.
+Each step answers one question in its title, in plain words and with the engine's figure in it: *Two rules flag 23 order lines in Birmingham*, *Paying early cost €3,482 last year*. The left column tells the story (title, what the agent said, the facts); the right column shows the evidence (the honeycomb, the case card, the figures). Propose and Prepare use the full width, because the person acts there.
 
-## 2. Page icon
+## 2. The frame
 
-Vici's `check` icon in a lilac hexagon cell (decision D2): in the header's brand cell, on the loading screen and as `favicon.svg` (Vici's check path in a lilac hexagon, fill `#f2e9fd`, outline `#372544`). Lilac is the prototypes' colour on Victor's website, where the prototype's card shows the same icon with the kind *prototype*. `tests/page-icon.mjs` compares the page with that card whenever a checkout of the website sits next to the repository; CI clones it there once the card exists.
+- **Header.** Name and company on the left; *How it works* and the theme switch; the four key figures top right.
+- **Step bar.** The tip and the five steps, with Back and Next. A step the run has not reached is disabled. Where a person must act, the step says so (*Your review*, *Your decision*, *Your approval*) and its marker turns merlot.
+- **Stage.** One step at a time, with no page scrolling at 1920 × 1080 or 1280 × 720. Long lists scroll inside their panel.
+- **Footer.** The byline with LinkedIn and website, as Vici specifies, and three short notes: an AI system, a fictional company, nothing ever sent.
 
-## 3. Colour grammar
+The address follows the presenter (`?case=…&step=…`), so a link opens the same screen.
 
-Four rules, the sister apps' (the head of `css/style.css` states them for the shell). Each colour means one thing, everywhere.
+## 3. Colour
 
-| Colour (Vici's tokens) | Means | In this app | Never used for |
-|---|---|---|---|
-| **Merlot** (`--vc-accent` and its tokens) | **The human in charge** | Primary actions; the progress step that waits for a person: *Your confirmation* (AI-suggested values to confirm), *Your decision* (a fix path), *Your approval* (each draft); the recommended option's frame; **decisions**: the approved fix path's card and its *Approved, re-scan pending*, the approved drafts and the case's rows *approved, re-scan pending*, in merlot's tint (the approved card's status with a tick); the intro window's *Propose* step; the focus ring | A state, or a mark among state colours: merlot sits close to Vici's danger tone |
-| **Danger, warning, success** (`--vc-danger-*`, `--vc-warning-*`, `--vc-success-*`) | **The state of the data** | A rule's hexagon: danger with a cross for a high-severity rule with open exceptions, warning with a bar and dot for a medium- or low-severity one, success with a tick for a rule with none; the case card's tone and mark, by the same rule; the people view's pips (solid danger, outlined warning); the cohort chart's closed (success) and still-open (warning) series; *Done* when a run has ended | Decoration, or a decision: an approval closes nothing until a re-scan, so it never wears the success green, and a rejected path or draft is ink, not danger |
-| **Fjord** (`--vc-info-*`) | Checking | The rules the agent scans or groups and the records it opens pulse in fjord as the cell's rim or the row's tint; what it marks or alerts on keeps a fjord rim; the intro window's *Check* step | |
-| **Lilac** (`--vc-feature-*`) | **The AI's voice**, and the page icon | The AI disclosure and the AI labels on the console's header (the narration and the reasoning summaries), the case card, the options, each draft, the review and the report; AI-suggested material groups and the words they rest on | Anything a person decided |
-| **Ink** (`--vc-text`, Vici's neutrals) | Everything else | Text, rules before a scan (ink on the neutral tint), the cohort table, the production path, the intro window's other steps (Vici's outlined marker, as on the progress rail), a rejected path or draft, the *Fictional company* tag | |
+Vici's tokens only; nothing round (Vici's hexagons replace circles). Each colour has one meaning, and the meanings must stay apart:
 
-**Every state has a form of its own** (WCAG 1.4.1): Vici's state tones are close in lightness and some come close under colour blindness, so a rule's state will always carry its mark (cross, bar and dot, tick) and a word as well as its tone.
+| Colour | Meaning |
+| --- | --- |
+| Danger (red) | A high-severity rule with open exceptions |
+| Warning (amber) | A medium or low-severity rule with open exceptions; a cost that goes on |
+| Success (green) | A rule with nothing open; a figure the approved fix improves |
+| Neutral (grey) | Not scanned yet, or not part of this scan |
+| Merlot (accent) | Your turn: the step that waits for you, the primary button, Approve |
+| Lilac (AI) | What the AI wrote: the AI tag, hypotheses and revisions |
 
-**Before a scan everything is neutral.** The fifteen rules sit in ink on Vici's neutral tint until a run scans them, and the header's tiles show the exception log's figures without a state tone. A rule a run has not scanned stays neutral.
+Colour never carries a meaning alone: each state also has an icon or a word, and the honeycomb's legend names them. `tests/tokens.mjs` checks every pair the page draws for contrast in both themes and reports how far the states stay apart for colour-blind readers.
 
-**Warning marks use the warning ink.** Vici's light `--vc-warning-solid` (#e2cfa0) is too pale for a line or a mark on white (under 3:1), so the cohort chart's still-open series, the warning pips and the legend's warning mark use `--vc-warning-text`; danger and success marks use their solid tones. `tests/tokens.mjs` holds every pair.
+## 4. The key figures
 
-## 4. Layout
+Four Vici stat tiles, top right, each with a label, a value and a note. Each starts from a value that makes sense before anything happens (€0 a year, *nothing costed yet*) and moves with the steps: Calculate puts the yearly cost at stake under *Cost avoided*; the decision turns it into the fix's yearly saving and stops the clock. The guide's third chapter explains all four, and its talk track quotes them.
 
-- **Built for the room.** The root size is fluid (15 px at 1280 px wide, about 17 px at 1920 px), so the page reads from the back of a room at 1920 × 1080 and still fits 1280 × 720 without horizontal scrolling. Targets the room clicks are at least 44 px.
-- **The header** holds the brand, the mode badge, How it works, the theme toggle, the AI disclosure, the *Fictional company, no client data* tag (in full at every width: the review of version 1.0.0 found the shortened *Fictional company* dropped the half that matters; its tooltip says what is invented) and four tiles: closure rate, clean spend, open exceptions, session cost. The tiles count the whole exception log; the board's scope line counts the last scan's scope and says so (*… 40 open exceptions in this scope; the header tiles count the whole exception log*).
-- **The workspace** puts the board on Vici's sunken canvas with its honeycomb on the left and the console on the right; the drawer with Options, Outbox and Audit sits below both.
-- **The board** is a caption card with the exception log's date and the world's size, a switch between its two views with the scope of the last scan, the view, a rule's exceptions when a cell is open, and the weekly cohorts.
-  - **Rules:** a honeycomb of fifteen flat-top hexagons in interlocking strips, one strip per data product (order lines; suppliers, materials and contracts side by side). Each cell shows its rule id with its state's mark, its open exceptions large and a two-line short name; its size follows the panel (96 to 150 px wide, `js/board.js`), so the strips fit 1280 × 720 and read from the back of the room at 1920 × 1080. A cell is a button: it opens the rule's exceptions as a table (record, responsible, routed to, spend affected, financing cost, unpaid, suggestion, status), which scrolls inside its card on a narrow board.
-  - **People:** one row per routed-to person, by name, role and team, with their exceptions as small hexagon pips by rule (solid for high severity, outlined for medium or low, the rest as "+n"), the drafts waiting for them and the fix path that covers them.
-  - **Weekly cohorts:** a line chart of the eight weeks, oldest on the left, with hexagon markers (detected in ink, closed in success, still open in the warning ink and dashed) and direct labels at the line ends, no legend to decode; the table of the same numbers one click away under "Show the numbers". No pie, no donut.
+## 5. Words
 
-**From 1920 × 1080 down to 1280 × 720.** The layout suite measures five screens in both themes, and these rules came out of it in version 1.0.0:
+- Plain English, British spelling, no em dashes and none of Vici's stock words.
+- Names, not ids: *James P., buyer, Indirect, Birmingham*, never U124; *the buying profile of the Indirect team*, never U190; cities for plants and company codes (`js/plain.js`).
+- No tool names on screen. *What the agent did* says what a tool call did in a sentence.
+- Every figure is the engine's. The agent's words carry the lilac AI tag, and the case card and the report say so.
+- Approving a draft says what happens: *Approved. Not sent: this page has no email or ERP connection.*
 
-- **Every text on a cell stays inside its hexagon.** The suite takes each line of a cell's text and checks its corners against the flat-top hexagon. At 1280 × 720 (cells about 100 px wide) two second lines stuck out, so DQ-10 reads *VAT ID format / or missing* and DQ-15 *Contract / not valid*; the cell's accessible name keeps the rule's full name.
-- **The control bar keeps one row.** Below 1,600 px Reset, Method and Diagnostics keep their icons and their tooltips name them, as in the sister apps; below 1,400 px the scenario picker names the scenario by its number (*Scenario 1*), because the status tag's *Awaiting your decision* and the full title no longer fit beside each other. The menu and the console's tip card give the full title.
-- **A rule's table fits the board.** Its headings wrap, an order line's record breaks after its order number (*4500101079/* above *20*), and on laptop widths its cells, its card's inset and its status column are narrower, so its eight columns fit 1280 × 720 without scrolling sideways.
-- **The console does not scroll sideways.** Its SIMULATION watermark is wider than a laptop's console and turned; the log clips it (section 8).
-- **The decision is in view when it arrives.** On screens at least 1,000 px high the open drawer is up to 520 px tall (48 % of the height), so at 1920 × 1080 the recommended card's Approve shows without scrolling; on a laptop the drawer scrolls the recommended card's actions into view once it has opened, and up to 1,500 px wide the cards' summaries are set smaller. Each tab of the drawer opens at its top.
-- **Every text is legible from the room.** The layout suite measures every text on screen: nothing under 11 px; the cells' names scale with the cell, and at 1280 × 720 their 9.7 px is the largest that stays inside the hexagon (10.4 px left it in a measured run), so they may not fall below 9.5 px. The cell's accessible name and tooltip and its table give the rule's full name.
+## 6. What the page leaves out
 
-## 5. Shapes: nothing round
+Version 2.0.0 cut what a customer audience does not need, to get the first screen to nine controls: the control bar and replay speeds, the timed console, the drawer with its tables and people view, the weekly cohort chart, the Method dialog, Diagnostics, Save run as simulation, Live sweep and the custom what-if. The engine, the seventeen tools, their guardrails, the figure audit, Live mode and the audit log stayed. TECH_NOTES.md §9 records the decision.
 
-Vici's hexagon rule: anything that would be round is a hexagon (`clip-path: var(--vc-hex)`): the brand cell, the rule cells, the pips, the chart's markers, the production path's steps, the progress rail's steps. `tests/hexagon.mjs` scans the app's files for round CSS and drawing code and checks the rendered page in both themes, through a Simulation run with its review, case card, cell table, people view, fix paths, outbox and report.
+## 7. Access and motion
 
-## 6. The checks
-
-| Suite | What it holds |
-|---|---|
-| `tests/tokens.mjs` | WCAG 2.2 contrast for every colour pair the shell and this app draw, in both themes (4.5:1 for text, 3:1 for marks); this app's pairs are listed in `tests/lib/prototype.mjs`. It also reports how far the state tones stay apart under protanopia, deuteranopia and tritanopia (the rule states: danger against warning, warning against success), without failing on Vici's own tones |
-| `tests/hexagon.mjs` | Nothing round, in the files and on screen |
-| `tests/page-icon.mjs` | `favicon.svg` byte for byte, the header and loading screen using the icon's cell |
-| `tests/vici-files.mjs` | `vici/` exactly as Vici's README lists it |
-| `tests/smoke.mjs` | Both themes at 1920 × 1080 and 1280 × 720: no horizontal scrolling, the screenshots for review |
-| `tests/accept.mjs` | The board's numbers equal the engine's; nothing reads closed before a re-scan; the honesty labels stay visible; the exports; the Method dialog; a run by keyboard alone with visible focus; reduced motion; accessible names |
-| `tests/layout.mjs` | 1920 × 1080, 1600 × 900, 1536 × 864, 1366 × 768 and 1280 × 720, each in both themes, through idle, the Method and Diagnostics dialogs, the mode dialog, the options, the outbox, the finished run with the exports, a rule's table and the people view: no horizontal overflow anywhere, nothing on the board or the tiles cut (no ellipsis, no clamp that hides a line, no clipped text), every text on a cell inside its hexagon, the header's badges clear of the tiles, the control bar on one row, every target at least 40 × 40 px, no text under 11 px (a cell's under 9.5 px); it reports the smallest text per screen |
-| `tests/design.mjs` | The colour grammar in the running app against the tokens of the theme on screen: each cell's face, text and rim in its state's tokens and its mark, the legend and the pips in the same colours, the AI labels in lilac, merlot for the recommended frame and the person's turn on the rail, the status tag's tones, decisions (the approved path, its status, the approved drafts and the case's rows) in merlot's tint and never in the success green, the intro window's steps in ink, fjord and merlot and never a state tone; and the review captures: the options as rendered and under a projector's washout, the finished run as seen with protanopia, deuteranopia and tritanopia |
-
-## 7. The agent's pieces
-
-- **The console** follows the Timetable Translator: each tool call reads as one plain sentence (`js/tool_plain.js`), with the tool's name, arguments and result under Details; a refused step is a *Guardrail* line with a shield; the case card is a Vici alert in the case's severity tone, marked as the board marks a rule (a cross for high severity, the warning mark for medium or low), with the root cause, the fix at the source, the engine's figures, the people it is routed to, "Checked in this run:" and the AI label; the report sits in a card with its AI label and opens in a dialog. The console's header carries an AI label of its own: the narration and the reasoning summaries are the agent's words, which the figure audit does not read.
-- **The review** of AI-suggested values is a wide dialog through the shell's `js/modal.js`: each free-text line's short text with the words the suggestion rests on marked in lilac, the proposed group (its code in a lilac tag, its name below), the words, the confidence, and Approve and Reject per line or for all; Confirm review stays disabled until every line is decided.
-- **The fix-path cards** are the shell's option cards with this method's figures: *Closed after re-scan (projected)* for every path, spend covered, financing cost avoided now, exceptions prevented and future cost avoided a year, one-off effort, days and, for a fix at the source, when prevention starts; the closure rate projected after re-scan as the card's total, noted as projected from the case's 14-day closure history. The recommended card has the merlot frame and the one solid Approve. Doing nothing shows what the case gains a year, their cost a year at the case's average financing cost per exception (the method's 12 × *f* × *E* / *n*, which can exceed the case's own past year when the inflow is larger than the case) and its past cost, and asks for the reason before "Accept the risk".
-- **The outbox** shows each draft with its kind's icon (a slip for a change request, a letter for a follow-up, the honeycomb for a prevention request, a memo for the risk memo), its recipient by name, role and team, its status tag and the AI label; "Draft. Nothing is sent." leads the tab.
-
-## 8. Deviations from Vici
-
-- The shared shell's type steps Vici has no step for (`--fs-xs`, `--fs-lg`, `--fs-xl`, `--fs-kpi`) and its 44 px target size come with the shell, as in the sister apps.
-- The shared shell's pickers end a long value in an ellipsis at 360 px (`css/components.css`). On screens of 1,600 px and more the scenario picker shows *1. Contract references l…*; the menu and the console's tip card show the full title. The layout suite accepts this one ellipsis; the board and the tiles have none.
-- The console's log clips its SIMULATION watermark sideways (`css/agent.css`, version 1.0.0). The shared stylesheet lets the turned watermark make the log scroll a few pixels sideways on laptops; REVIEW.md names it as a candidate for the shell.
-- On a hexagon cell the keyboard's focus rim wins over the reading pulse (`css/board.css`): the focus must stay visible while the agent reads the rule.
-- The shared intro window colours its five steps in the data's state tones (`css/modals.css`). This app keeps the shared file and sets the steps by its own grammar in `css/agent.css` (Vici's outlined marker, *Check* in fjord, *Propose* in merlot); REVIEW.md names it as a candidate for the shell.
-
-## 9. The Method dialog and the exports
-
-- **The Method dialog** is a wide Vici dialog with five parts, each under a heading: the fifteen rules as a table (the rule with its data product, record and condition in muted text under its name; dimension; severity; the responsible person; the deterministic suggestion, *None* in muted text where there is none), why accuracy is left out, the definitions as a list of terms, the parameters, and the production path of the intro window. It opens at its top: the focus starts on the first heading, not on the first field below.
-- **The parameters** are a table of three columns: the parameter, its field for Live runs, its default. Each field is Vici's input group with the unit as its addon (*days*, *minutes*, *€*, *% a year*), numbers right-aligned; a changed parameter carries a plain *Changed* tag. **Apply to Live runs** (primary) and **Back to the defaults** (outline) sit under the table beside a status line, success-text for an applied change and danger-text for a refused one, which names the bounds. The log of this tab's changes follows, newest first, with each time in muted tabular figures. During a run the heading carries a lock, the fields are read-only and the buttons say why they are disabled. Diagnostics shows the same values read-only, with each default beside a changed one.
-- **The exports** sit in the Audit tab's head beside *Save run as simulation*: **Report (.md)**, **Exceptions (.csv)** and **Audit log (.json)**, outline buttons with Vici's download icon except the last, the solid one. Before a run, or before the report, the first two are disabled and their tooltips say why.
-
-## 10. Keyboard, focus and motion
-
-- **A run by keyboard alone.** Every control is a native button, field or link in reading order: the header, the control bar, the board (its view switch, the cells, a rule's table), the console, then the drawer's tabs and panels. `tests/accept.mjs keyboard` plays scenario 1 to the end with Tab and Enter only.
-- **Your turn is two Tabs away.** After *Skip to the agent console*, a second skip link appears while something waits for the person: *Skip to your decision* hands the focus to the recommended option's Approve, *Skip to your approval* to the first pending draft's. Without it the decision sat about fifty Tabs down the page.
-- **The focus keeps its place.** When a decision rebuilds the options or the outbox, the focus stays in the panel, on the next decision; when the run switches the drawer's tab, the focus moves to the opened panel's first decision, or to its tab, instead of falling to the page. A dialog keeps the focus inside it (Tab wraps) and gives it back on closing; Escape closes a dialog and an AI label's note.
-- **Visible focus.** Vici's merlot focus outline on buttons, fields and links; Vici's hexagon ring on icon buttons; the outline of an interactive card around its stretched button in the mode dialog; on a hexagon cell its rim in the focus colour, which wins over the agent's reading pulse.
-- **Reduced motion.** With *reduce motion* set in the system, Vici's rule shortens every animation to nothing: the reading pulses stop (the rim stays fjord, without pulsing), the status tag's dot and the rail's step stop pulsing, and the console scrolls without smooth scrolling. `tests/accept.mjs motion` checks that no animation keeps running while the agent reads, and, as its control, that the pulses do run without the setting.
-- **Accessible names.** A cell's name says its rule, count and severity (*DQ-01 Contract not referenced: 30 open exceptions, high severity. Open its exceptions.*); every table has a caption, and every row a row header (the record, the person, the week, the rule, the parameter); icon buttons are named by their tooltips; the status tag and the parameter status are live regions. `tests/accept.mjs names` reads Chrome's accessibility tree: no control without a name, fifteen cells named by their rule, no data row without its header.
+Every control is a native button, select or input, reachable by Tab and labelled. The arrow keys move between steps unless the focus is in a field or a dialog is open. Each step change moves the focus to the step's title, so a screen reader announces it. Reduced motion stops the figure flips and the live pulse; forced colours keep the honeycomb's states readable.

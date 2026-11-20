@@ -17,7 +17,7 @@ concurrency:
 jobs:
   node:
     # GitHub cuts job names at 100 characters.
-    name: Node.js suites (design, world, unit, engine, audit, tools, VAT, policy, hygiene, docs, parity)
+    name: Node.js suites (design, world, unit, engine, audit, tools, VAT, policy, hygiene, docs)
     # Pinned image: Playwright 1.56's system dependencies are known to install on Ubuntu 24.04.
     runs-on: ubuntu-24.04
     timeout-minutes: 10
@@ -26,9 +26,9 @@ jobs:
       - uses: actions/setup-node@v4
         with:
           node-version: 22
-      # Rebate Hunter's public repository, next to this checkout where the suites look for it: parity
-      # compares the shared shell with its main branch, and the world suite re-derives the shared
-      # accounts from the commit they were taken from, so the clone keeps its history (about 2 MB).
+      # Rebate Hunter's public repository, next to this checkout where the world suite looks for it: it
+      # re-derives the shared accounts from the commit they were taken from, so the clone keeps its
+      # history (about 2 MB).
       - run: git clone https://github.com/VictorPflueger/PROC-Rebate-Hunter ../PROC-Rebate-Hunter
       # Victor's website next to this checkout, but only once it carries this prototype's card: the
       # page-icon suite then holds the card's name, icon and kind to the page (AC-18). Until the card is
@@ -44,7 +44,7 @@ jobs:
           fi
       # The hygiene check reads a private term list from the HYGIENE_TERMS secret if the repository
       # has one; without it the generic checks run (tests/hygiene.mjs).
-      - run: node tests/run-all.mjs tokens page-icon vici-files world unit engine audit tools vat policy hygiene docs parity
+      - run: node tests/run-all.mjs tokens page-icon vici-files world unit engine audit tools vat policy hygiene docs
         env:
           HYGIENE_TERMS: ${{ secrets.HYGIENE_TERMS }}
 
@@ -64,7 +64,7 @@ jobs:
           path: ~/.cache/ms-playwright
           key: playwright-1.56.0-chromium-${{ runner.os }}
       - run: npm install -g playwright@1.56.0 && npx playwright install --with-deps chromium
-      - run: NODE_PATH="$(npm root -g)" node tests/run-all.mjs smoke sims live accept hexagon layout design
+      - run: NODE_PATH="$(npm root -g)" node tests/run-all.mjs presenter live_ui hexagon
         env:
           DQ_TEST_OUT: ${{ runner.temp }}/data-quality-agent-tests
       - if: always()

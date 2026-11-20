@@ -1,6 +1,5 @@
 // The page's security policy and what it loads (AC-07), checked in the files without a browser:
-//   policy    the policy meta tag of index.html is exactly the documented policy, and Diagnostics
-//             checks the page against the same text;
+//   policy    the policy meta tag of index.html is exactly the documented policy;
 //   loads     every script, stylesheet, font, image and module comes from this site: no absolute URL
 //             in a <script src>, <link href>, CSS url() or @import, or a JavaScript import; the only
 //             host any code connects to is api.anthropic.com;
@@ -94,8 +93,6 @@ const metas = [...html.matchAll(/<meta\s+http-equiv="Content-Security-Policy"\s+
 check(metas.length === 1, `index.html has exactly one policy meta tag (${metas.length})`);
 check(metas[0] === POLICY, `the policy is exactly the documented one${metas[0] === POLICY ? "" : `: ${metas[0]}`}`);
 check(/<head>[\s\S]*?<meta charset="utf-8">[\s\S]*?http-equiv="Content-Security-Policy"[\s\S]*?<link rel="stylesheet"/.test(html), "the policy comes before any stylesheet or script");
-const diag = read("js/diagnostics.js");
-check(diag.includes(`EXPECTED_POLICY = "${POLICY}"`), "Diagnostics checks the page against the same policy");
 
 // ---- loads -----------------------------------------------------------------------------------------
 const css = [...files("css", ".css")];
@@ -131,12 +128,12 @@ const prefix = /id:\s*"([a-z]+)"/.exec(config)[1];
 check(prefix === "dq", `the app's id is "dq" (${prefix})`);
 const storageBlock = /export const STORAGE = \{([\s\S]*?)\};/.exec(config)[1];
 const declared = [...storageBlock.matchAll(/`\$\{P\}([^`]+)`/g)].map((m) => `dq.${m[1]}`);
-check(declared.length >= 5 && /const P = `\$\{APP\.id\}\.`;/.test(config), `js/config.js declares ${declared.length} storage keys, each under "dq." (${declared.join(", ")})`);
+check(declared.length >= 1 && /const P = `\$\{APP\.id\}\.`;/.test(config), `js/config.js declares ${declared.length} storage key(s), each under "dq." (${declared.join(", ")})`);
 const literal = [...js, "tests/lib/harness.mjs"].flatMap((f) => storageKeys(read(f)).map((k) => [f, k]));
 const strays = literal.filter(([, k]) => !k.startsWith("dq.") && k !== "vc-theme");
 check(!strays.length, `every literal storage key starts with "dq." or is Vici's "vc-theme"${strays.length ? `: ${strays.map(([f, k]) => `${k} (${f})`).join(", ")}` : ` (${literal.length} uses)`}`);
 const harness = read("tests/lib/harness.mjs");
-check(/KEYS = \{ apiKey: "dq\.anthropic\.key", introSeen: "dq\.introSeen", diagnostics: "dq\.diag" \}/.test(harness), "the test harness uses the same keys");
+check(/KEYS = \{ apiKey: "dq\.anthropic\.key" \}/.test(harness), "the test harness uses the same key");
 check(/STORAGE\.apiKey/.test(read("js/keystore.js")) && /sessionStorage/.test(read("js/keystore.js")) && !/localStorage/.test(stripComments(read("js/keystore.js"))), "the API key is kept in session storage under STORAGE.apiKey, never in local storage");
 
 for (const p of passes) console.log(`PASS  ${p}`);

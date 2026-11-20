@@ -1,9 +1,8 @@
-// Simulation player: replays a script of data/sim_runs.js through the run-event bus, executing every
-// tool call with the live toolbox (js/tools.js) against the world, so the board, the tiles, the case
-// card, the options and the drafts show the engine's figures exactly as a live run on the same inputs
-// would, and the same guardrails apply. Only the narration comes from the script. The presenter
-// decides, reviews and approves on screen as in Live mode; the replay speed (×1, ×2, ×4) sets the
-// pace. Scripts are authored by hand or recorded from a live run (js/recorder.js).
+// Simulation player: plays a script of data/sim_runs.js through the run-event bus, executing every tool
+// call with the live toolbox (js/tools.js), so the steps show the engine's figures exactly as a live run
+// on the same inputs would, and the same guardrails apply. Only the agent's words come from the script.
+// There is no replay clock: the run goes as far as it can at once and waits where a person decides
+// (the review, the fix paths, the drafts), so the presenter sets the pace by stepping through.
 
 import { bus } from "./events.js";
 import { createToolbox } from "./tools.js";
@@ -15,42 +14,33 @@ import { PARAMS } from "./params.js";
 
 const ABORT = Symbol("abort");
 
-export function createSimulationPlayer({ getSpeed }) {
+export function createSimulationPlayer() {
   let current = null;
 
-  async function play(script, { scenario }) {
+  async function play(script) {
     const human = createHumanQueue();
-    const run = { cancelled: false, ended: false, waiters: new Set(), msg: 0, human };
+    const run = { cancelled: false, ended: false, msg: 0, human };
     current = run;
     const offs = HUMAN_EVENTS.map((type) => bus.on(type, (ev) => { if (!run.ended) human.push(ev); }));
-    const wait = (ms) => {
-      if (run.cancelled) return Promise.reject(ABORT);
-      const speed = Math.max(0.25, Number(getSpeed()) || 1);
-      return new Promise((resolve, reject) => {
-        const t = setTimeout(() => { run.waiters.delete(cancel); resolve(); }, ms / speed);
-        const cancel = () => { clearTimeout(t); reject(ABORT); };
-        run.waiters.add(cancel);
-      });
-    };
+    const live = () => { if (run.cancelled) throw ABORT; };
     const gate = createPhaseGate((state) => { if (!run.ended) bus.emit("state_change", { state }); });
-    const setPhase = (state) => gate.set(state);
     // Simulation runs on the method's default parameters, so every scripted run stays valid.
     const toolbox = createToolbox({
       world: window.WORLD, mode: "simulation", today: appToday(), params: PARAMS,
       emit: (type, payload) => { if (!run.ended) bus.emit(type, payload); },
-      onPhase: setPhase,
+      onPhase: (state) => gate.set(state),
       waitFor: (kind, test) => human.waitFor(kind, test)
     });
     try {
       bus.emit("cost_update", { simulated: true, eur: 0, usd: 0, input_tokens: 0, output_tokens: 0 });
-      setPhase("scanning");
+      gate.set("scanning");
       await runScript(script, {
         world: window.WORLD, toolbox,
         hooks: {
-          think: async (text) => { bus.emit("reasoning", { msg_id: `sim-r${++run.msg}`, text, done: true }); await wait(400); },
-          say: (text, kind) => say(run, text, kind, wait),
-          toolCall: async (callId, name, input) => { if (run.cancelled) throw ABORT; bus.emit("tool_call", { call_id: callId, name, input }); await wait(name.startsWith("ui_await") ? 150 : 650); },
-          toolResult: async (callId, name, out) => { bus.emit("tool_result", { call_id: callId, name, ok: !out.isError, summary: out.summary, result: out.result }); await wait(300); }
+          think: (text) => { live(); bus.emit("reasoning", { msg_id: `sim-r${++run.msg}`, text, done: true }); },
+          say: (text, kind) => { live(); bus.emit("narration", { msg_id: `sim-n${++run.msg}`, text, done: true, ...(kind ? { kind } : {}) }); },
+          toolCall: (callId, name, input) => { live(); bus.emit("tool_call", { call_id: callId, name, input }); },
+          toolResult: (callId, name, out) => { live(); bus.emit("tool_result", { call_id: callId, name, ok: !out.isError, summary: out.summary, result: out.result }); }
         }
       });
       if (!run.ended && !run.cancelled) end(run, "done");
@@ -65,20 +55,6 @@ export function createSimulationPlayer({ getSpeed }) {
     }
   }
 
-  async function say(run, text, kind, wait) {
-    const id = `sim-n${++run.msg}`;
-    await wait(300);
-    const words = text.split(/(\s+)/);
-    let out = "";
-    for (let i = 0; i < words.length; i += 6) {
-      out += words.slice(i, i + 6).join("");
-      bus.emit("narration", { msg_id: id, text: out, done: false, ...(kind ? { kind } : {}) });
-      await wait(Math.max(40, (words.slice(i, i + 6).join("").length / 70) * 1000));
-    }
-    bus.emit("narration", { msg_id: id, text, done: true, ...(kind ? { kind } : {}) });
-    await wait(250);
-  }
-
   function end(run, status, reason) {
     if (run.ended) return;
     run.ended = true;
@@ -90,8 +66,6 @@ export function createSimulationPlayer({ getSpeed }) {
     const run = current;
     if (!run || run.ended) return;
     run.cancelled = true;
-    for (const w of run.waiters) w();
-    run.waiters.clear();
     run.human.cancel(ABORT);
     end(run, "aborted", reason);
   }

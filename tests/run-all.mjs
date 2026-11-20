@@ -1,6 +1,6 @@
 // Runs every check in order and prints a summary. The app itself needs none of this.
 // Usage: node tests/run-all.mjs               (all suites)
-//        node tests/run-all.mjs engine smoke  (only the named suites)
+//        node tests/run-all.mjs engine presenter  (only the named suites)
 import { spawnSync } from "node:child_process";
 import path from "node:path";
 import { APP_ROOT } from "./lib/harness.mjs";
@@ -18,14 +18,9 @@ const SUITES = [
   { id: "policy", what: "security policy, no outside resources, no inline script or style, storage keys", file: "tests/policy.mjs", browser: false },
   { id: "hygiene", what: "no client, contact or meeting named in any published file", file: "tests/hygiene.mjs", browser: false },
   { id: "docs", what: "the documents complete, their cited sections and named paths real, the live site linked", file: "tests/docs.mjs", browser: false },
-  { id: "parity", what: "shared shell identical to the sister app's, two modules adapted (needs a Rebate Hunter checkout)", file: "tests/parity.mjs", browser: false, optional: true },
-  { id: "smoke", what: "the page boots in both themes and two sizes, tiles equal the engine, Diagnostics passes", file: "tests/smoke.mjs", browser: true },
-  { id: "sims", what: "the six scenarios in Simulation along three decision paths, offline, with the engine's figures", file: "tests/sims.mjs", browser: true },
-  { id: "live", what: "the live agent against the scripted API stand-in: key, guardrails, review, caps, sweep, custom, recorder", file: "tests/live.mjs", browser: true },
-  { id: "accept", what: "the board equals the engine; honesty; exports; the Method dialog; keyboard, motion and names", file: "tests/accept.mjs", browser: true },
-  { id: "hexagon", what: "nothing round: the app's files, and the rendered app in both themes through a run", file: "tests/hexagon.mjs", browser: true },
-  { id: "layout", what: "1920×1080 to 1280×720 in both themes: no overflow, nothing cut, targets of 40 px", file: "tests/layout.mjs", browser: true },
-  { id: "design", what: "the colour grammar on the tokens, merlot for your turn, AI labels; review captures", file: "tests/design.mjs", browser: true }
+  { id: "presenter", what: "the presenter: steps by click, keys and ?step=; key figures equal the engine; six cases, every decision path, lean, layout", file: "tests/presenter.mjs", browser: true },
+  { id: "live_ui", what: "Run it live against the scripted API stand-in: key handling, a full run with the measured cost, frame, guardrail, caps", file: "tests/live_ui.mjs", browser: true },
+  { id: "hexagon", what: "nothing round: the app's files, and the rendered app in both themes through a run", file: "tests/hexagon.mjs", browser: true }
 ];
 
 const only = process.argv.slice(2);
@@ -58,12 +53,7 @@ for (const s of chosen) {
   if (CI) {
     process.stdout.write(r.stdout || "");
     process.stderr.write(r.stderr || "");
-    if (r.status !== 0 && !(s.optional && r.status === 2)) annotate(s, `${r.stdout || ""}\n${r.stderr || ""}`);
-  }
-  // An optional suite without what it needs (parity without a sister-app checkout) exits 2: skipped.
-  if (s.optional && r.status === 2) {
-    summary.push({ ...s, ok: true, skipped: true, code: r.status, seconds: Math.round((Date.now() - started) / 1000) });
-    continue;
+    if (r.status !== 0) annotate(s, `${r.stdout || ""}\n${r.stderr || ""}`);
   }
   summary.push({ ...s, ok: r.status === 0, code: r.status, seconds: Math.round((Date.now() - started) / 1000) });
   if (r.status === 2 && s.browser) {
@@ -73,12 +63,11 @@ for (const s of chosen) {
 }
 
 console.log("\n=== Summary ===");
-for (const s of summary) console.log(`${s.skipped ? "SKIP" : s.ok ? "PASS" : "FAIL"}  ${s.id.padEnd(10)} ${String(s.seconds).padStart(4)} s  ${s.what}`);
+for (const s of summary) console.log(`${s.ok ? "PASS" : "FAIL"}  ${s.id.padEnd(10)} ${String(s.seconds).padStart(4)} s  ${s.what}`);
 const skipped = chosen.length - summary.length;
 if (skipped) console.log(`(${skipped} suite${skipped === 1 ? "" : "s"} not run)`);
 const allPassed = summary.length === chosen.length && summary.every((s) => s.ok);
-const noneSkipped = summary.every((s) => !s.skipped);
-// The success lines name what ran: every suite with none skipped, or exactly the suites asked for.
-if (allPassed && noneSkipped && !only.length) console.log(`ALL SUITES PASSED (${summary.length} of ${SUITES.length})`);
-if (allPassed && noneSkipped && only.length) console.log(`SUITES PASSED: ${chosen.map((s) => s.id).join(" ")}`);
+// The success lines name what ran: every suite, or exactly the suites asked for.
+if (allPassed && !only.length) console.log(`ALL SUITES PASSED (${summary.length} of ${SUITES.length})`);
+if (allPassed && only.length) console.log(`SUITES PASSED: ${chosen.map((s) => s.id).join(" ")}`);
 process.exit(allPassed ? 0 : 1);

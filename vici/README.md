@@ -1,7 +1,7 @@
 # Vici, copied into this prototype
 
 These files come unchanged from Vici, Victor Pflüger's design system
-(<https://victorpflueger.github.io/ViciDesign/index.html>), version **v1.0.0** (commit `fdd868b` on its main branch).
+(<https://victorpflueger.github.io/ViciDesign/index.html>), version **v1.0.0** as it stands on its main branch at commit `f7bf7e0` (20 Nov 2026), which already carries Vici 2.0's How it works guide and status colours; the version number stays 1.0.0 until the 2.0.0 release.
 The prototype loads them from here rather than from a CDN, so every page is served from this site alone.
 
 | File here | What it is |

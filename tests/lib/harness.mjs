@@ -2,6 +2,7 @@
 // from a third party and reaches only api.anthropic.com, so every external request in a test is
 // either answered by the scripted API stand-in or blocked.
 import { createRequire } from "node:module";
+import { execSync } from "node:child_process";
 import http from "node:http";
 import os from "node:os";
 import path from "node:path";
@@ -41,6 +42,13 @@ export function loadPlaywright() {
   for (const c of candidates) {
     try { return require(c); } catch { /* try the next one */ }
   }
+  // A global install without NODE_PATH: ask npm where global modules live.
+  try {
+    const root = execSync("npm root -g", { encoding: "utf8", stdio: ["ignore", "pipe", "ignore"], timeout: 15000 }).trim();
+    for (const name of ["playwright", "playwright-core"]) {
+      try { return require(path.join(root, name)); } catch { /* try the next one */ }
+    }
+  } catch { /* npm not on the path */ }
   console.error("Playwright was not found. Install it with `npm install -g playwright` and `npx playwright install chromium`,\nthen run the tests with NODE_PATH=\"$(npm root -g)\" (or set PLAYWRIGHT_MODULE to the playwright folder).");
   process.exit(2);
 }
@@ -84,11 +92,8 @@ export const NETWORK_NOISE = /Failed to load resource|net::ERR_|ERR_BLOCKED_BY_C
 /** A key-shaped string that is obviously not a real key. */
 export const MOCK_KEY = "sk-ant-test-MOCKKEY-0123456789abcdefghijklmnopqrstuvwxyz0123456789";
 
-/**
- * Init script for browser contexts: marks the intro window as seen, so it does not open by itself
- * and cover the controls. The smoke suite's "intro" case runs without it.
- */
-export const SKIP_INTRO = () => { try { localStorage.setItem("dq.introSeen", "1"); } catch { /* file:// or blocked storage */ } };
+/** The page's address with the guide kept closed (Vici's ?guide=0), for tests that start on the tip. */
+export const NO_GUIDE = "?guide=0";
 
 /** Browser storage keys of the app (js/config.js STORAGE), for tests that inspect storage. */
-export const KEYS = { apiKey: "dq.anthropic.key", introSeen: "dq.introSeen", diagnostics: "dq.diag" };
+export const KEYS = { apiKey: "dq.anthropic.key" };

@@ -5,7 +5,7 @@ export const APP = {
   name: "Data Quality Agent",
   fullName: "Procurement Data Quality Agent",
   subtitle: "Procurement data quality",
-  version: "1.0.0"
+  version: "2.0.0"
 };
 
 export const ANTHROPIC = {
@@ -61,25 +61,20 @@ export const FX_USD_EUR = 0.894;
 
 // The live agent reads no open data and has no web search: the world's five data products and its
 // exception log are its only source, so the page's security policy allows exactly one outside host,
-// api.anthropic.com. js/diagnostics.js checks that the policy says so.
+// api.anthropic.com. tests/policy.mjs checks that the policy says so.
 export const OPEN_DATA = {};
 
 // Every browser storage key, all under this app's own prefix. GitHub Pages serves all of an
 // account's project sites from one origin, so a sister app (Rebate Hunter uses "rh.", Navigator
-// "nav.", the Timetable Translator "tt.", Repack Pilot "rp.") must never share a key with this one:
-// no shared API key, intro flag, cost total or memory. Vici's theme key "vc-theme" is the only shared one.
+// "nav.", the Timetable Translator "tt.", Repack Pilot "rp.") must never share a key with this one.
+// Vici keeps its own: the theme ("vc-theme") and whether this tab has seen the guide.
 const P = `${APP.id}.`;
 export const STORAGE = {
-  apiKey: `${P}anthropic.key`,          // sessionStorage: this tab only
-  diagnostics: `${P}diag`,              // sessionStorage: checks that failed recently (unused until a module needs it)
-  model: `${P}model`,                   // sessionStorage
-  speed: `${P}speed`,                   // sessionStorage
-  sessionCost: `${P}sessionCostEur`,    // sessionStorage: live spend in this tab
-  introSeen: `${P}introSeen`,           // localStorage: the intro opens by itself only on a first visit
-  consoleText: `${P}consoleText`,       // localStorage: larger console text for projectors
-  params: `${P}params`                  // sessionStorage: the method's parameters changed in the Method dialog (Live runs)
+  apiKey: `${P}anthropic.key`           // sessionStorage: this tab only
 };
 
+// The case the page opens on and the guide's talk track follows: Paying too early, the one a
+// newcomer follows best (invoices paid within 14 days although the contracts say 60).
 export const UI = {
-  defaultScenario: "SC-PUNCHOUT"
+  defaultScenario: "SC-EARLY-PAY"
 };
