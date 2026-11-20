@@ -10,7 +10,6 @@ import { redactSecrets } from "./keystore.js";
 import { RULE_SET_VERSION } from "./rules.js";
 import { ENGINE_VERSION } from "./engine.js";
 import { computeRunFacts } from "./run_facts.js";
-import { paramChanges } from "./settings.js";
 
 const events = [];
 const apiExchanges = [];
@@ -143,7 +142,7 @@ export function buildAuditDocument() {
     return t;
   }, { input_tokens: 0, output_tokens: 0, cache_read_input_tokens: 0, cache_creation_input_tokens: 0 });
   const doc = {
-    app: `${APP.name} — ${APP.fullName}`,
+    app: `${APP.name}: ${APP.fullName}`,
     app_version: APP.version,
     rule_set_version: RULE_SET_VERSION,
     engine_version: ENGINE_VERSION,
@@ -163,9 +162,9 @@ export function buildAuditDocument() {
     run,
     model: mode === "live" ? (run?.model || null) : null,
     usage: mode === "live" ? usage : null,
-    // The method's parameters this run used, and this tab's log of changes made in the Method dialog.
+    // The method's parameters this run used (always the defaults: the page has no parameter editor).
     parameters: runParams ? { in_effect: runParams.in_effect, changed: runParams.changed, source: runParams.changed.length ? "method dialog" : "defaults" } : null,
-    parameter_changes: paramChanges(),
+    parameter_changes: [],
     run_facts: run && run.status !== "running" ? safeFacts() : null,
     cost: lastCost,
     counts: { ...countBy(events.map((e) => e.type)), model_calls: apiExchanges.length },

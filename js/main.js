@@ -1,6 +1,6 @@
-// Entry point. Checks the data files, then imports and starts the UI. The UI is imported
+// Entry point. Checks the data files, then imports and starts the page. The page is imported
 // dynamically so that a failed module load is reported on the boot screen instead of leaving a
-// blank page. Browsers never run this module from file:// — the boot screen in index.html explains
+// blank page. Browsers never run this module from file://, and the boot screen in index.html explains
 // that case on its own. Nothing is loaded from a third party: every file comes from this site.
 
 import { APP } from "./config.js";
@@ -21,21 +21,20 @@ async function boot() {
     throw new Error(`These data files did not load: ${missing.join(", ")}. Deploy them next to index.html and reload.`);
   }
 
-  setBootStatus("Starting the workspace…");
+  setBootStatus("Starting the page…");
   let ui;
   try {
-    ui = await import("./ui.js");
+    ui = await import("./app.js");
   } catch (err) {
     throw new Error(`A program file failed to load (${err?.message || err}). Check that the js/ folder was deployed completely.`);
   }
-  const { initUI, showBanner } = ui;
+  const { initApp, showBanner } = ui;
   const { redactSecrets } = await import("./keystore.js");
 
-  const app = initUI();
+  window.__dq = initApp();
   installErrorReporting(showBanner, redactSecrets);
   document.documentElement.dataset.boot = "ready";
   hideBoot();
-  app.introOnFirstVisit();
 
   if (location.protocol === "file:") {
     showBanner({ level: "warn", title: "Opened from disk", text: "Serve this folder over http(s) for reliable behaviour, for example with python -m http.server 8000." });
@@ -82,7 +81,7 @@ function installErrorReporting(showBanner, redactSecrets) {
     showBanner({
       level: "error",
       title: "Unexpected error",
-      text: `${text} The audit log keeps everything recorded so far. If the screen looks wrong, use Reset.`,
+      text: `${text} The audit log keeps everything recorded so far. If the page looks wrong, go back to the tip and start again.`,
       timeout: 15000
     });
   };

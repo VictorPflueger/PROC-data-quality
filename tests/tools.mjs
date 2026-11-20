@@ -10,7 +10,6 @@ import vm from "node:vm";
 import { APP_ROOT } from "./lib/harness.mjs";
 import { createToolbox, toolDefinitions, TOOL_NAMES, inputError } from "../js/tools.js";
 import { createHumanQueue } from "../js/human.js";
-import { toolPlain } from "../js/tool_plain.js";
 import { summarizeToolResult } from "../js/summaries.js";
 import { SCENARIO_SPECS } from "../js/world_check.js";
 import { DRAFT_FOOTER, MOCK_LINE } from "../js/drafts.js";
@@ -120,15 +119,13 @@ for (const spec of SCENARIO_SPECS) {
   check(same && fp.case.n === ref.n && near(fp.case.spend_eur, ref.spend_eur) && near(fp.case.E, ref.financing_cost_eur), `${spec.id}: dq_fix_paths equals the frozen paths A to D and doing nothing`);
 }
 
-// ---- 4. stable figure names, plain sentences, summaries ------------------------------------------------
+// ---- 4. stable figure names and summaries ------------------------------------------------
 {
   const { run } = session();
   const s = await run("dq_scan", {});
   const names = s.figures.map((f) => f.name);
   check(["scan.clean_share", "scan.exceptions", "scan.closure_rate", "scan.rule.DQ-01", "scan.open_spend"].every((n) => names.includes(n)), "dq_scan's figures carry stable names (scan.clean_share …)");
   check(s.figures.find((f) => f.name === "scan.clean_share").display === "75.2%", "a share displays with one decimal (75.2%)");
-  check(BRIEF_TOOLS.every((n) => typeof toolPlain(n, {}) === "string" && toolPlain(n, {}).length > 8), "every tool has a plain sentence written by code");
-  check(toolPlain("dq_scan", { rules: ["DQ-01"], filters: [{ key: "plant", values: ["3010"] }] }) === "Runs DQ-01 over the data at plant 3010 and reconciles with the exception log", "the plain sentence names the rules and the filter");
   check(summarizeToolResult("dq_scan", s.result).startsWith("164 exceptions"), `summaries read the result (${summarizeToolResult("dq_scan", s.result)})`);
 }
 
@@ -366,60 +363,6 @@ const refused = (out, pattern) => out.isError && pattern.test(out.result.error |
   const shown = events.filter((e) => e.type === "alert").pop();
   check(refused(r1, /Figure audit: "€999,999"/) && refused(r2, /Figure audit/) && !r3.isError && shown?.payload.unchecked?.includes("€999,999") && events.some((e) => e.type === "notice" && /Unchecked/.test(e.payload.text)),
     "a figure no tool returned is refused twice, then shown with an Unchecked tag and a notice");
-}
-
-// ---- Save run as simulation: a live run becomes a recorded script that passes the script check ----
-{
-  const { SIM_RUNS } = load("data/sim_runs.js");
-  const { SCENARIOS } = load("data/scenarios.js");
-  const { buildRecordedRun, templatize } = await import("../js/recorder.js");
-  const { checkScript } = await import("../js/sim_check.js");
-  const { runScript } = await import("../js/sim_script.js");
-  /** Plays a script as a live run would: the events the audit keeps, texts with the engine's figures typed out. */
-  async function liveEvents(script, path) {
-    const events = [];
-    const human = createHumanQueue();
-    const push = (type, payload) => events.push({ type, payload });
-    const tb = createToolbox({
-      world: WORLD, mode: "live", onPhase: () => {}, waitFor: (k, t) => human.waitFor(k, t),
-      emit: (type, payload) => {
-        push(type, payload);
-        if (type === "options") queueMicrotask(() => human.push({ type: "option_decision", payload: { options_seq: payload.options_seq, option_id: path === "recommended" ? payload.recommended : payload.options.find((o) => o.id !== payload.recommended).id, decision: "approved" } }));
-        if (type === "confirmation_request") queueMicrotask(() => human.push({ type: "confirmation_decision", payload: { review_id: payload.review_id, decisions: payload.items.map((i) => ({ line_id: i.line_id, decision: "approved" })) } }));
-        if (type === "action_draft") queueMicrotask(() => human.push({ type: "action_decision", payload: { action_id: payload.action_id, decision: "approved" } }));
-      }
-    });
-    let m = 0;
-    await runScript(script, { world: WORLD, toolbox: tb, hooks: {
-      think: (t) => push("reasoning", { msg_id: `m${++m}`, text: t, done: true }),
-      say: (t) => push("narration", { msg_id: `m${++m}`, text: t, done: true }),
-      toolCall: (id, name, input) => push("tool_call", { call_id: id, name, input: JSON.parse(JSON.stringify(input)) }),
-      toolResult: (id, name, out) => push("tool_result", { call_id: id, name, ok: !out.isError, summary: out.summary, result: out.result })
-    } });
-    return events;
-  }
-  for (const [id, script] of Object.entries(SIM_RUNS)) {
-    for (const path of ["recommended", "another"]) {
-      const events = await liveEvents(script, path);
-      const run = { scenario_id: id, mode: "live", entry: "scenario", status: "done", title: script.title, started_at: "2026-11-20T10:00:00.000Z", model: "claude-sonnet-5-5", run_id: "run-test" };
-      const rec = buildRecordedRun({ events, run, world: WORLD, base: script });
-      const res = rec.error ? null : await checkScript(WORLD, rec.def, { scenarios: SCENARIOS });
-      const typed = (rec.literal || []).filter((x) => !/^\d+ days?$/.test(x));
-      check(!rec.error && res.ok && rec.def.source === "recorded" && Object.keys(rec.def.steps.at(-1).decide.paths).length === 1 && !typed.length,
-        `${id}, ${path} path: the recorded run passes the script check, with placeholders for the engine's figures${rec.error ? ` (${rec.error})` : res.ok ? "" : ` (${res.problems[0] || res.runs.find((r) => !r.ok)?.problems[0]})`}${typed.length ? ` (typed: ${typed.join(", ")})` : ""}`);
-    }
-  }
-  const named = new Map([["case.spend", { type: "amount", value: 29281.04 }], ["case.n", { type: "count", value: 30 }], ["path.C.projected", { type: "share", value: 0.6974 }]]);
-  const t = templatize("All 30 lines, worth €29,281, would bring the rate to 69.7% projected; 31 stays typed.", named);
-  check(t.text === "All {{case.n}} lines, worth {{case.spend}}, would bring the rate to {{path.C.projected}} projected; 31 stays typed." && JSON.stringify(t.literal) === '["31"]',
-    `the recorder turns the figures a tool returned into placeholders and keeps the others as typed (${t.text})`);
-  // A recording whose narration types a figure no tool returned needs curation.
-  const events = await liveEvents(SIM_RUNS["SC-PUNCHOUT"], "recommended");
-  const k = events.findIndex((e) => e.type === "narration");
-  events[k] = { type: "narration", payload: { ...events[k].payload, text: `${events[k].payload.text} About 4,321 lines are affected.` } };
-  const bad = buildRecordedRun({ events, run: { scenario_id: "SC-PUNCHOUT", mode: "live", entry: "scenario", status: "done", title: "t", started_at: "2026-11-20T10:00:00.000Z", model: "m", run_id: "r" }, world: WORLD, base: SIM_RUNS["SC-PUNCHOUT"] });
-  const badRes = await checkScript(WORLD, bad.def, { scenarios: SCENARIOS });
-  check(!badRes.ok && badRes.problems.some((x) => /narration types figures no tool returned \(4,321\)/.test(x)), "a recording whose narration types a figure no tool returned is held for curation");
 }
 
 for (const p of passes) console.log(`PASS  ${p}`);

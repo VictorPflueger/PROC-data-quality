@@ -1,34 +1,20 @@
 <!doctype html>
-<html lang="en">
+<html lang="en-GB">
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <!-- The browser enforces where this page may connect: the API key can only ever reach api.anthropic.com,
-       the one outside host (TECH_NOTES §4). Scripts, styles, fonts and images come from this site only:
-       the app loads nothing from a third party. -->
+       the one outside host. Scripts, styles, fonts and images come from this site only. -->
   <meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self'; style-src 'self'; img-src 'self' data:; font-src 'self'; connect-src https://api.anthropic.com; object-src 'none'; base-uri 'none'; form-action 'none'">
   <meta name="referrer" content="strict-origin-when-cross-origin">
   <meta name="color-scheme" content="light dark">
-  <meta name="description" content="The Data Quality Agent watches the procurement data of a fictional industrial group: fifteen rules find order lines, contracts and master records that miss something or contradict each other, and an AI agent finds the root cause, costs the ways to fix it and drafts the follow-ups for human approval.">
-  <title>Data Quality Agent — Procurement data quality</title>
+  <meta name="description" content="The Data Quality Agent turns a vague tip about bad purchasing data into a costed fix that a person approves: which records, why, who acts and what each fix costs. Fictional company, no client data.">
+  <title>Data Quality Agent: procurement data quality</title>
   <link rel="icon" href="favicon.svg" type="image/svg+xml">
-
-  <!-- The look comes from Victor's design system Vici, copied unchanged into vici/ (vici/README.md).
-       It sits in cascade layers, so the app's own stylesheets below refine it without !important. -->
   <link rel="stylesheet" href="vici/dist/vici.min.css">
-  <link rel="stylesheet" href="css/style.css">
-  <link rel="stylesheet" href="css/components.css">
-  <link rel="stylesheet" href="css/board.css">
-  <link rel="stylesheet" href="css/agent.css">
-  <link rel="stylesheet" href="css/console.css">
-  <link rel="stylesheet" href="css/drawer.css">
-  <link rel="stylesheet" href="css/modals.css">
-
-  <!-- The theme before the page is drawn (light unless the visitor chose dark), then Vici's script. -->
+  <link rel="stylesheet" href="css/app.css">
   <script src="js/theme.js"></script>
   <script src="vici/dist/vici.js" defer></script>
-
-  <!-- The fictional company and its scenarios: plain scripts that set window globals (no fetch needed). -->
   <script src="data/world.js" defer></script>
   <script src="data/scenarios.js" defer></script>
   <script src="data/reference_cases.js" defer></script>
@@ -36,55 +22,187 @@
   <script type="module" src="js/main.js"></script>
 </head>
 <body class="app-shell">
-  <a class="vc-skip-link skip-link" href="#console">Skip to the agent console</a>
-  <!-- Shown while options or drafts wait for the person: their turn is two Tabs from the top. -->
-  <a class="vc-skip-link skip-link" href="#drawer" id="skip-turn" hidden>Skip to your decision</a>
+  <a class="vc-skip-link" href="#stage">Skip to the step on screen</a>
 
   <header class="app-header">
     <div class="brand">
       <span class="vc-cell vc-cell--lilac" aria-hidden="true"><span class="vc-icon vc-icon--check"></span></span>
       <div class="brand-text">
         <span class="brand-name">Data Quality Agent</span>
-        <span class="brand-sub">Procurement data quality for GlobalCorp SE</span>
+        <span class="brand-sub">Procurement data at GlobalCorp SE</span>
       </div>
     </div>
-
-    <div class="header-badges">
-      <span id="mode-badge" class="vc-tag mode-badge" data-mode="none" role="status" aria-live="polite" title="Choose a mode with Start agent">No run active</span>
-      <!-- Vici's theme toggle (vici.js switches the theme and remembers the choice). -->
+    <div class="header-actions">
+      <span id="mode-tag" class="vc-tag mode-tag" role="status" hidden></span>
+      <button type="button" class="vc-button vc-button--secondary vc-button--sm" id="btn-guide" data-vc-guide-open="guide"><span class="vc-icon vc-icon--info" aria-hidden="true"></span>How it works</button>
       <span class="vc-tooltip-anchor">
-        <button type="button" class="vc-icon-button theme-toggle" data-vc-theme-toggle aria-labelledby="tip-theme"><span class="vc-icon vc-icon--moon vc-when-light" aria-hidden="true"></span><span class="vc-icon vc-icon--sun vc-when-dark" aria-hidden="true"></span></button>
+        <button type="button" class="vc-icon-button" data-vc-theme-toggle aria-labelledby="tip-theme"><span class="vc-icon vc-icon--moon vc-when-light" aria-hidden="true"></span><span class="vc-icon vc-icon--sun vc-when-dark" aria-hidden="true"></span></button>
         <span class="vc-tooltip vc-tooltip--bottom" role="tooltip" id="tip-theme">Dark theme</span>
       </span>
-      <span class="vc-tag vc-tag--feature ai-disclosure" title="The Data Quality Agent is an AI system. Its analysis can be wrong. Every fix path waits for your decision, every draft for your approval, and nothing is ever sent or written to a real system.">
-        <span class="vc-icon vc-icon--sparkle" aria-hidden="true"></span>
-        <span><span class="long">You are interacting with an </span>AI system</span>
-      </span>
-      <span class="vc-tag fiction-note" title="GlobalCorp SE, its suppliers, people, orders and figures are invented. No client data is used.">
-        <span>Fictional company<span class="long">, no client data</span></span>
-      </span>
     </div>
-
-    <div id="kpis" class="kpis" role="group" aria-label="Key figures"></div>
+    <section class="kpis" aria-label="Key figures">
+      <article class="vc-stat kpi" id="kpi-cost" data-vc-kpi="Cost avoided">
+        <p class="vc-stat__label">Cost avoided</p>
+        <p class="vc-stat__value"><span class="kpi-value">€0</span><span class="vc-stat__unit kpi-unit">a year</span></p>
+        <p class="vc-stat__note kpi-note">nothing costed yet</p>
+      </article>
+      <article class="vc-stat kpi" id="kpi-fixed" data-vc-kpi="Records fixed">
+        <p class="vc-stat__label">Records fixed</p>
+        <p class="vc-stat__value"><span class="kpi-value">0</span><span class="vc-stat__unit kpi-unit"></span></p>
+        <p class="vc-stat__note kpi-note">nothing scanned yet</p>
+      </article>
+      <article class="vc-stat kpi" id="kpi-time" data-vc-kpi="Detection → decision">
+        <p class="vc-stat__label">Detection → decision</p>
+        <p class="vc-stat__value"><span class="kpi-value">0:00</span><span class="vc-stat__unit kpi-unit">min</span></p>
+        <p class="vc-stat__note kpi-note">starts with the scan</p>
+      </article>
+      <article class="vc-stat kpi" id="kpi-session" data-vc-kpi="Session cost">
+        <p class="vc-stat__label">Session cost</p>
+        <p class="vc-stat__value"><span class="kpi-value">€0.00</span><span class="vc-stat__unit kpi-unit"></span></p>
+        <p class="vc-stat__note kpi-note">no run yet</p>
+      </article>
+    </section>
   </header>
 
-  <nav id="controls" class="controls" aria-label="Run controls"></nav>
+  <nav class="stepbar" aria-label="Steps of the demo">
+    <button type="button" class="vc-button vc-button--ghost stepbar-back" id="btn-back"><span class="vc-icon vc-icon--chevron-left" aria-hidden="true"></span>Back</button>
+    <ol class="vc-stepper steps" id="steps"></ol>
+    <button type="button" class="vc-button vc-button--danger stepbar-stop" id="btn-stop" hidden><span class="vc-icon vc-icon--stop" aria-hidden="true"></span>Stop</button>
+    <button type="button" class="vc-button stepbar-next" id="btn-next">Next<span class="vc-icon vc-icon--chevron-right" aria-hidden="true"></span></button>
+  </nav>
 
-  <main class="workspace">
-    <!-- The workspace's first panel (layout class shared with the sister apps) holds the data-quality
-         board: the fifteen rules by data product and the weekly closure cohorts. -->
-    <section class="map-panel" aria-label="Data-quality board: the fifteen rules and the weekly closure cohorts">
-      <div id="board"></div>
-    </section>
-    <section id="console" class="console-panel" aria-label="Agent console" tabindex="-1"></section>
-  </main>
+  <main id="stage" class="stage" tabindex="-1"></main>
 
-  <section id="drawer" class="drawer" aria-label="Options, outbox and audit log"></section>
+  <footer class="app-footer">
+    <p class="vc-byline">
+      <span class="vc-byline__label">Built by</span>
+      <span class="vc-byline__person"><span class="vc-avatar vc-avatar--xs"><img src="vici/assets/brand/portrait-96.jpg" alt="" width="96" height="96"></span><span class="vc-byline__name">Victor Pflüger</span></span>
+      <span class="vc-byline__links">
+        <a class="vc-byline__icon" href="https://www.linkedin.com/in/victorpflueger" target="_blank" rel="author noopener" aria-label="Victor Pflüger on LinkedIn (opens in a new tab)"><img class="vc-platform-mark" src="vici/assets/marks/linkedin.png" alt="" width="840" height="779"></a>
+        <span class="vc-tooltip-anchor">
+          <a class="vc-byline__icon" href="https://victorpflueger.github.io/VIP/index.html" target="_blank" rel="author noopener" aria-label="Victor Pflüger's website (opens in a new tab)" aria-describedby="tip-website"><span class="vc-icon vc-icon--globe-hex" aria-hidden="true"></span></a>
+          <span class="vc-tooltip" role="tooltip" id="tip-website">Website</span>
+        </span>
+      </span>
+    </p>
+    <p class="footer-notes">
+      <span class="vc-tag vc-tag--feature"><span class="vc-icon vc-icon--sparkle" aria-hidden="true"></span>You are interacting with an AI system</span>
+      <span class="vc-tag">Fictional company, no client data</span>
+      <span class="footer-safe"><span class="vc-icon vc-icon--shield" aria-hidden="true"></span>Nothing is ever sent</span>
+    </p>
+  </footer>
 
-  <div id="banners" class="banner-stack"></div>
+  <div id="banners" class="banner-stack" aria-live="polite"></div>
 
-  <!-- Boot screen: removed by js/main.js once the workspace is running. Without JavaScript modules
-       (for example when opened from disk via file://) it stays and explains what to do. -->
+  <!-- How it works: Vici's guide. vici.js builds the chapter rail and opens it once per browser tab;
+       js/app.js fills the figures from the engine (data-fact). The talk track follows the default case. -->
+  <dialog class="vc-dialog vc-guide" id="guide" aria-labelledby="guide-title" data-vc-guide data-vc-guide-auto data-vc-guide-count="{n} of {total}">
+    <header class="vc-dialog__header">
+      <h2 class="vc-dialog__title" id="guide-title">How the prototype works</h2>
+      <button type="button" class="vc-icon-button" data-vc-close aria-label="Close"><span class="vc-icon vc-icon--close" aria-hidden="true"></span></button>
+    </header>
+    <div class="vc-guide__chapters">
+      <section class="vc-guide__chapter" data-vc-chapter="what" data-vc-nav="What it does">
+        <h3>Turns a vague tip into a costed fix you approve</h3>
+        <p class="vc-guide__lead">Bad purchasing data costs money, and nobody owns it. The agent finds the records behind a tip, why they are wrong, who can fix them and what each fix costs. A person decides.</p>
+        <div class="vc-table-wrap"><table class="vc-table vc-table--compact guide-case">
+          <caption>The default case</caption>
+          <tbody>
+            <tr><th scope="row">The tip</th><td><span data-fact="lead.tip"></span></td></tr>
+            <tr><th scope="row">What the agent finds</th><td><span data-fact="lead.found"></span></td></tr>
+            <tr><th scope="row">What you decide</th><td><span data-fact="lead.choice"></span></td></tr>
+          </tbody>
+        </table></div>
+      </section>
+      <section class="vc-guide__chapter" data-vc-chapter="how" data-vc-nav="How it works">
+        <h3>Five steps, and a person decides twice</h3>
+        <p class="vc-guide__lead">Fifteen rules check the data. The agent works out the cause; a rule engine, not the AI, computes every figure. Simulation plays a scripted run through the same tools; Live runs Claude on your key.</p>
+        <ol class="guide-steps">
+          <li><strong>Spot.</strong> The rules flag the records behind the tip.</li>
+          <li><strong>Check.</strong> The agent tests a cause, corrects itself when the data disagree and names who must act.</li>
+          <li><strong>Calculate.</strong> The engine works out what the case costs.</li>
+          <li><strong>Propose.</strong> Fix paths next to doing nothing. You decide.</li>
+          <li><strong>Prepare.</strong> Drafts wait for your approval. Nothing is ever sent.</li>
+        </ol>
+      </section>
+      <section class="vc-guide__chapter" data-vc-chapter="figures" data-vc-nav="The four figures">
+        <h3>Four figures show what the agent brings</h3>
+        <p class="vc-guide__lead">They sit top right and change as you step through. The engine computes them, never the AI; only Session cost is an estimate in a simulation.</p>
+        <div class="vc-table-wrap"><table class="vc-table vc-table--compact guide-figures">
+          <caption>The key figures</caption>
+          <tbody>
+            <tr><th scope="row">Cost avoided</th><td>Financing cost the approved fix avoids a year, from the engine. What it avoids at once shows below.</td></tr>
+            <tr><th scope="row">Records fixed</th><td>Records the approved fix corrects, from the engine. Projected until a re-scan no longer finds them.</td></tr>
+            <tr><th scope="row">Detection → decision</th><td>Time from the scan to your decision, measured on this page. Below it: how long the oldest of these exceptions has waited.</td></tr>
+            <tr><th scope="row">Session cost</th><td>What the run costs on Claude: measured in Live, estimated in a simulation from the run's own prompts and replies at list price.</td></tr>
+          </tbody>
+        </table></div>
+      </section>
+      <section class="vc-guide__chapter" data-vc-chapter="production" data-vc-nav="With your data">
+        <h3>With your data it runs on SAP and Microsoft</h3>
+        <p class="vc-guide__lead">This page stands in for the whole path. With real data, each step runs on a product your company may already use.</p>
+        <figure class="guide-path">
+          <div class="guide-path__row">
+            <div class="guide-node"><span class="vc-cell vc-cell--sm" aria-hidden="true">1</span><strong>SAP S/4HANA or Ariba</strong><span>Orders, contracts, suppliers</span></div>
+            <div class="guide-node"><span class="vc-cell vc-cell--sm" aria-hidden="true">2</span><strong>Microsoft Fabric</strong><span>The rules run on the data</span></div>
+            <div class="guide-node"><span class="vc-cell vc-cell--sm" aria-hidden="true">3</span><strong>Azure OpenAI, Copilot Studio</strong><span>The agent</span></div>
+            <div class="guide-node"><span class="vc-cell vc-cell--sm" aria-hidden="true">4</span><strong>Power BI</strong><span>Reporting</span></div>
+            <div class="guide-node"><span class="vc-cell vc-cell--sm" aria-hidden="true">5</span><strong>Power Automate, Teams</strong><span>Approvals and tasks</span></div>
+            <div class="guide-node"><span class="vc-cell vc-cell--sm" aria-hidden="true">6</span><strong>SAP</strong><span>Carries out what people approved</span></div>
+          </div>
+          <figcaption>GlobalCorp SE, its people, orders and figures are fictional: no client data.</figcaption>
+        </figure>
+      </section>
+      <section class="vc-guide__chapter" data-vc-chapter="present" data-vc-nav="How to present">
+        <h3>Show it in five minutes</h3>
+        <p class="vc-guide__lead">Six steps, five minutes in all. The guide closes on the tip; the arrow keys move between steps, and the figures top right move with them.</p>
+        <ol class="vc-guide__path">
+          <li><strong>The tip.</strong> <span class="vc-guide__say">“Treasury thinks we pay Birmingham’s suppliers too early. That one sentence is all the agent gets.”</span> <span class="vc-guide__time">0.5 min</span></li>
+          <li><strong>Spot.</strong> <span class="vc-guide__say">“Two of fifteen rules flag <span data-fact="lead.n"></span> order lines worth <span data-fact="lead.spend"></span>. The oldest flag has waited <span data-fact="lead.age"></span> without a decision.”</span> <span class="vc-guide__time">1 min</span></li>
+          <li><strong>Check.</strong> <span class="vc-guide__say">“The agent suspects one supplier, tests it and corrects itself: one shared buying profile created all <span data-fact="lead.n"></span>.”</span> <span class="vc-guide__time">1 min</span></li>
+          <li><strong>Calculate.</strong> <span class="vc-guide__say">“Paying early cost <span data-fact="lead.past"></span> last year. Leave it, and it costs about <span data-fact="lead.yearly"></span> a year.”</span> <span class="vc-guide__time">0.5 min</span></li>
+          <li><strong>Propose: approve <span data-fact="lead.path"></span>.</strong> <span class="vc-guide__say">“You decide, not the AI. Watch the figures top right: Cost avoided goes to <span data-fact="lead.yearly"></span> a year, Records fixed to <span data-fact="lead.fixed"></span>.”</span> <span class="vc-guide__time">1 min</span></li>
+          <li><strong>Prepare.</strong> <span class="vc-guide__say">“Two drafts wait for approval and nothing is ever sent. Run live, this would cost about <span data-fact="lead.session"></span> in Session cost.”</span> <span class="vc-guide__time">1 min</span></li>
+        </ol>
+      </section>
+    </div>
+    <footer class="vc-dialog__footer vc-guide__footer">
+      <span class="vc-guide__count"></span>
+      <button type="button" class="vc-button vc-button--ghost" data-vc-guide-back><span class="vc-icon vc-icon--chevron-left" aria-hidden="true"></span>Back</button>
+      <button type="button" class="vc-button" data-vc-guide-next data-vc-guide-done="Start">Next<span class="vc-icon vc-icon--chevron-right" aria-hidden="true"></span></button>
+    </footer>
+  </dialog>
+
+  <!-- Run it live: the visitor's own Anthropic API key, kept in this tab only. -->
+  <dialog class="vc-dialog live-dialog" id="live-dialog" aria-labelledby="live-title">
+    <header class="vc-dialog__header">
+      <h2 class="vc-dialog__title" id="live-title">Run it live</h2>
+      <button type="button" class="vc-icon-button" data-vc-close aria-label="Close"><span class="vc-icon vc-icon--close" aria-hidden="true"></span></button>
+    </header>
+    <div class="vc-dialog__body vc-stack">
+      <p>Claude works the same tip with real tool calls; the steps fill as it goes. You are interacting with an AI system, and nothing is ever sent.</p>
+      <p id="live-current" class="vc-alert vc-alert--neutral" hidden></p>
+      <div class="vc-field">
+        <label class="vc-label" for="api-key-input">Your Anthropic API key</label>
+        <input class="vc-input" id="api-key-input" name="dq-api-key" type="password" autocomplete="off" spellcheck="false" placeholder="sk-ant-…" aria-describedby="api-key-help live-msg" data-1p-ignore data-lpignore="true" data-bwignore="true" data-form-type="other">
+        <p class="vc-help" id="api-key-help">Use a key of its own with a low monthly spend limit. It stays in this tab, goes only to api.anthropic.com and is checked first with a free call.</p>
+      </div>
+      <div class="vc-field">
+        <label class="vc-label" for="model-select">Model</label>
+        <select class="vc-select" id="model-select"></select>
+      </div>
+      <p class="vc-help">A run stops by itself at 40 model calls or €3. Session cost, top right, shows what it spends.</p>
+      <p id="live-msg" class="live-msg" role="status"></p>
+    </div>
+    <footer class="vc-dialog__footer">
+      <button type="button" class="vc-button vc-button--ghost" id="btn-forget-key" hidden>Forget key</button>
+      <button type="button" class="vc-button vc-button--ghost" data-vc-close>Cancel</button>
+      <button type="button" class="vc-button" id="btn-live-start"><span class="vc-icon vc-icon--play" aria-hidden="true"></span>Check key and start</button>
+    </footer>
+  </dialog>
+
+  <!-- Boot screen: removed by js/main.js once the page runs. Without JavaScript modules (opened from
+       disk via file://) it stays and explains what to do. -->
   <div id="boot" class="boot" data-state="loading">
     <div class="boot-card">
       <div class="boot-brand">
@@ -94,8 +212,8 @@
       <p class="boot-status" role="status" aria-live="polite"><span class="vc-spinner" aria-hidden="true"></span><span id="boot-status">Starting the Data Quality Agent…</span></p>
       <p id="boot-detail" class="vc-alert vc-alert--danger boot-detail" hidden></p>
       <div class="boot-help">
-        <p>Still on this screen? The Data Quality Agent has to be served over http or https. Browsers block its program modules when <code>index.html</code> is opened straight from disk, at an address starting with <code>file://</code>.</p>
-        <p>To run it on your computer, open a terminal in this folder, run <code>python -m http.server 8000</code>, then open <code>http://localhost:8000</code>. Published on GitHub Pages, it works as is. Use a current Chrome or Edge.</p>
+        <p>Still on this screen? The page has to be served over http or https. Browsers block its program modules when <code>index.html</code> is opened straight from disk.</p>
+        <p>To run it on your computer, open a terminal in this folder, run <code>python -m http.server 8000</code>, then open <code>http://localhost:8000</code>.</p>
       </div>
       <noscript><p class="boot-detail">The Data Quality Agent needs JavaScript. Allow it for this site and reload the page.</p></noscript>
     </div>

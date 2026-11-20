@@ -13,46 +13,44 @@ export const NAME = "Data Quality Agent";
  * information and are not listed, as in the shared shell's pairs.
  */
 export const COLOUR_PAIRS = [
-  // The data-quality board: its canvas (bg-sunken) holds cards on the surface.
-  ["The board's caption and card titles", "text", "surface", "text"],
-  ["Rule details, card notes and the cohort table's dates", "text-muted", "surface", "text"],
-  ["A rule's hexagon before a scan: its number (neutral)", "neutral-text", "neutral-bg", "text"],
-  ["The cohort table's figures and its total row", "text", "surface", "text"],
-  // The honeycomb's cells after a scan: id, count, name and mark on the state's tint.
-  ["A high-severity rule with open exceptions: words and cross", "danger-text", "danger-bg", "text"],
-  ["A medium- or low-severity rule with open exceptions: words and bar and dot", "warning-text", "warning-bg", "text"],
-  ["A rule with nothing open: words and tick", "success-text", "success-bg", "text"],
-  ["What the agent reads: the fjord rim of a cell", "info-solid", "surface", "mark"],
-  ["The legend's warning mark", "warning-text", "surface", "mark"],
-  ["The legend's danger mark", "danger-solid", "surface", "mark"],
-  ["The legend's success mark", "success-solid", "surface", "mark"],
-  // People: pips by rule.
-  ["A high-severity pip", "danger-solid", "surface", "mark"],
-  ["A medium- or low-severity pip's outline", "warning-text", "surface", "mark"],
-  // The weekly cohorts' chart.
-  ["Detected: line and hexagon markers", "text", "surface", "mark"],
-  ["Closed: line and hexagon markers", "success-solid", "surface", "mark"],
-  ["Still open: dashed line and outlined markers", "warning-text", "surface", "mark"],
-  ["The chart's direct labels: closed", "success-text", "surface", "text"],
-  ["The chart's direct labels: still open", "warning-text", "surface", "text"],
-  ["The chart's axis labels", "text-muted", "surface", "text"],
-  // The review of AI-suggested values: the AI's words in lilac.
-  ["The words a suggestion rests on, marked in the short text and listed", "feature-text", "feature-bg", "text"],
-  // The console's empty state and the scenario's tip.
-  ["The scenario's tip on its quiet fill", "text", "bg-subtle", "text"],
-  ["The tip's note", "text-muted", "bg-subtle", "text"],
-  // How it works: the production path.
-  ["The production path's numbers in their hexagons", "neutral-text", "neutral-bg", "text"],
-  ["The production path's names", "text", "surface-raised", "text"],
-  ["The production path's roles", "text-muted", "surface-raised", "text"],
-  // The header's fiction note: a plain tag.
-  ["Fictional company, no client data (a plain tag)", "neutral-text", "neutral-bg", "text"],
-  // The Method dialog: the parameters' units beside their fields, a changed parameter's tag, and the
-  // answer to Apply, on the dialog's raised surface.
-  ["A parameter's unit beside its field", "text-muted", "bg-subtle", "text"],
-  ["A changed parameter (a plain tag)", "neutral-text", "neutral-bg", "text"],
-  ["Parameters applied and logged", "success-text", "surface-raised", "text"],
-  ["Parameters refused, with their bounds", "danger-text", "surface-raised", "text"]
+  // The stage: panels on the surface, the honeycomb canvas behind them.
+  ["A step's title, its lead and the facts", "text", "surface", "text"],
+  ["A step's notes, the facts' words and what the agent did", "text-muted", "surface", "text"],
+  // The fifteen rules as hexagons: words and marks on the state's tint.
+  ["A high-severity rule with open exceptions", "danger-text", "danger-bg", "text"],
+  ["A medium- or low-severity rule with open exceptions", "warning-text", "warning-bg", "text"],
+  ["A rule with nothing open", "success-text", "success-bg", "text"],
+  ["A rule outside the scan", "text-muted", "neutral-bg", "text"],
+  ["The rim of a rule in the case", "info-solid", "surface", "mark"],
+  // The AI's words: lilac.
+  ["The agent's words on their lilac ground", "text", "feature-bg", "text"],
+  ["The AI tag on the agent's words", "feature-text", "feature-bg", "text"],
+  ["The AI tag on a panel", "feature-text", "surface", "text"],
+  // The four key figures.
+  ["A key figure before anything happens", "text-muted", "surface", "text"],
+  ["A key figure that shows a gain", "success-text", "success-bg", "text"],
+  ["A key figure that shows what is at stake", "warning-text", "warning-bg", "text"],
+  ["A key figure's note on a gain", "text-muted", "success-bg", "text"],
+  ["A key figure's note at stake", "text-muted", "warning-bg", "text"],
+  // Calculate: the money.
+  ["Money already spent, on its quiet ground", "text", "bg-subtle", "text"],
+  ["Money at stake if nothing changes", "warning-text", "warning-bg", "text"],
+  // Propose and Prepare: your decisions in merlot's tint.
+  ["An approved path or draft: its words", "text", "accent-soft", "text"],
+  ["An approved path or draft: its status", "accent-text", "accent-soft", "text"],
+  ["Do nothing, on its quiet ground", "text-muted", "bg-subtle", "text"],
+  ["Show the full draft", "text-link", "surface", "text"],
+  // The step bar.
+  ["A step's name and hint", "text-muted", "bg-subtle", "text"],
+  ["The step that waits for you: its hint", "accent-text", "bg-subtle", "text"],
+  ["The step that waits for you: its number", "on-accent", "accent", "text"],
+  ["The step on screen: its number", "on-accent-soft", "accent-soft", "text"],
+  // Header and footer tags.
+  ["SIMULATION and Fictional company (plain tags)", "neutral-text", "neutral-bg", "text"],
+  ["LIVE, on merlot", "on-accent", "accent", "text"],
+  ["You are interacting with an AI system", "feature-text", "feature-bg", "text"],
+  // The guide's production path.
+  ["The production path's roles", "text-muted", "bg-subtle", "text"]
 ];
 
 /**
@@ -65,92 +63,50 @@ export const SEPARATIONS = [
 ];
 
 /**
- * The hexagon test's tour of the app (tests/hexagon.mjs): the intro, the idle board, Diagnostics, the
- * Method dialog with a changed parameter, the scenario menu, the drawer's three tabs, and the main
- * states of a Simulation run of scenario 3 (the review of AI-suggested values, the case card, the
- * honeycomb with states, a cell's exceptions, the people view, the fix paths, the outbox, the report
- * and the Audit tab with its exports). The page has just been opened, without
- * SKIP_INTRO, so the intro opens by itself. visit(name, { settle }) checks the page as it is, settle
- * ms (250) after the step.
+ * The hexagon test's tour of the page (tests/hexagon.mjs): the guide as it opens on a new tab, the tip,
+ * the five steps of the default case through the decision and the drafts to the report, the live
+ * dialog, and the review of AI-suggested values in Unclassified spend. visit(name, { settle }) checks the
+ * page as it is, settle ms (250) after the step.
  */
 export async function hexagonTour(page, visit) {
   await page.waitForSelector('html[data-boot="ready"]', { timeout: 20000 });
-  await page.waitForSelector(".intro-modal", { timeout: 10000 });
-  await visit("start screen with the intro");
+  await page.waitForSelector("dialog.vc-guide[open]", { timeout: 10000 });
+  await visit("the guide as it opens");
+  await page.click("dialog.vc-guide .vc-guide__rail .vc-step__button >> nth=-1");
+  await visit("the guide's talk track");
   await page.keyboard.press("Escape");
-  await page.waitForSelector(".intro-modal", { state: "detached", timeout: 5000 });
-  await visit("idle board");
-  await page.click("#cohort-details > summary");
-  await page.locator("#cohort-table").scrollIntoViewIfNeeded();
-  await visit("idle board, weekly cohorts");
-  await page.click("#btn-diagnostics");
-  await page.waitForSelector('.diag-table tr[data-test="world"] .diag-status[data-s="pass"], .diag-table tr[data-test="world"] .diag-status[data-s="fail"]', { timeout: 15000 });
-  await visit("diagnostics");
+  await visit("the tip");
+  await page.click("#btn-live");
+  await page.waitForSelector("#live-dialog[open]", { timeout: 5000 });
+  await visit("the live dialog");
   await page.keyboard.press("Escape");
-  await page.waitForSelector(".diag-table", { state: "detached", timeout: 5000 });
-  // The Method dialog with a parameter changed (its tag, the log, the status line) and back.
-  await page.click("#btn-method");
-  await page.waitForSelector(".method-modal[open]", { timeout: 5000 });
-  await page.fill("#param-cost_of_capital", "7");
-  await page.click("#btn-params-apply");
-  await page.locator("#method-params").scrollIntoViewIfNeeded();
-  await visit("method dialog with a changed parameter");
-  await page.click("#btn-params-reset");
-  await page.keyboard.press("Escape");
-  await page.waitForSelector(".method-modal", { state: "detached", timeout: 5000 });
-  await page.click("#dd-scenario");
-  await page.waitForSelector(".dropdown-menu:not([hidden])", { timeout: 5000 });
-  await visit("scenario menu");
-  await page.click('.dropdown-menu [data-id="SC-UNCLASSIFIED"]');
-  for (const tab of ["options", "outbox", "audit"]) {
-    await page.click(`#tab-${tab}`);
-    await page.waitForSelector(`#panel-${tab}:not([hidden])`, { timeout: 5000 });
-    await visit(`drawer, ${tab}`);
-  }
-  await page.click(".drawer-toggle");
-  await page.click("#btn-about");
-  await page.waitForSelector(".intro-modal", { timeout: 5000 });
-  await visit("how it works");
-  await page.keyboard.press("Escape");
-  await page.waitForSelector(".intro-modal", { state: "detached", timeout: 5000 });
-  // A Simulation run of scenario 3, through its review, decision and drafts.
   await page.click("#btn-start");
-  await page.waitForSelector(".mode-modal", { timeout: 5000 });
-  await visit("mode dialog");
-  await page.click("#btn-mode-simulation");
-  await page.click(".segmented button[aria-label='Replay speed ×4']");
-  await page.waitForSelector(".review-modal", { timeout: 60000 });
-  await visit("review of AI-suggested values", { settle: 600 });
-  await page.click("#btn-review-approve-all");
-  await page.click("#btn-review-confirm");
-  await page.waitForSelector("#console .case-card", { timeout: 60000 });
-  await visit("case card and the honeycomb with states");
-  await page.click("#cell-DQ-02");
-  await page.waitForSelector("#ex-card:not([hidden])", { timeout: 5000 });
-  await visit("a cell's exceptions");
-  await page.click("#view-people");
-  await visit("people view");
-  await page.click("#view-rules");
-  await page.waitForSelector('.option-card[data-recommended="true"] [data-action="approve"]', { timeout: 60000 });
-  await visit("fix paths");
-  await page.click('.option-card[data-recommended="true"] [data-action="approve"]');
-  for (;;) {
-    if (await page.locator(".entry[data-end]").count()) break;
-    const pending = page.locator('.action-card[data-status="pending"] [data-action="approve"]');
-    if (await pending.count()) {
-      if (!(await page.locator('.action-card[data-status="approved"]').count())) await visit("outbox with drafts");
-      await pending.first().click();
-    }
-    await page.waitForTimeout(200);
+  await page.waitForSelector('.hex[data-state="danger"]', { timeout: 20000 });
+  await visit("Spot");
+  for (const name of ["Check", "Calculate", "Propose"]) {
+    await page.keyboard.press("ArrowRight");
+    await visit(name);
   }
-  await visit("run complete with its report");
-  await page.click("#btn-open-report");
-  await page.waitForSelector(".report-modal", { timeout: 5000 });
-  await visit("the report");
-  await page.keyboard.press("Escape");
-  // The Audit tab with its three exports.
-  await page.click("#tab-audit");
-  await visit("audit with its exports");
+  await page.click('.opt[data-recommended="true"] [data-action="approve"]');
+  await visit("Propose, decided");
+  await page.keyboard.press("ArrowRight");
+  await page.waitForSelector('.draft[data-status="pending"]', { timeout: 20000 });
+  await visit("Prepare, drafts waiting");
+  for (let i = 0; i < 6; i += 1) {
+    const pending = page.locator('.draft[data-status="pending"] [data-action="approve"]');
+    if (!(await pending.count())) break;
+    await pending.first().click();
+    await page.waitForTimeout(150);
+  }
+  await page.waitForSelector(".report", { timeout: 20000 });
+  await visit("Prepare, the report");
+  // The review of AI-suggested values.
+  await page.click('.stepbar .vc-step__button[data-step="0"]');
+  await page.selectOption("#case-select", "SC-UNCLASSIFIED");
+  await page.click("#btn-start");
+  await page.keyboard.press("ArrowRight");
+  await page.waitForSelector(".review-table", { timeout: 20000 });
+  await visit("Check, the review of AI suggestions");
 }
 
 /**
