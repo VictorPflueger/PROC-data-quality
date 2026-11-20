@@ -9,7 +9,7 @@ Scope: the live agent with all 17 tools and its guardrails in code, the board's 
   EXPECT: LIVE OK: key
   EVIDENCE: automatic-evidence=v1; definition-sha256=ad1b2f5817c02a2259c502250040e6ef9307a0088d558e4ef46154873e9fdabb; exit=0; EXPECT=matched; output-sha256=d90245d5992a18f5388c45d74155d663d862fda3d4e71c1c10b07589bdfb9068; output-bytes=115; shell=/bin/sh; cwd=/home/claude/proc-data-quality; path=14bdffb0e8ca/16 entries
 
-- [x] G2: AC-09 against the stand-in, a verified alert is refused without a named dq_group group of at least half its base or without three records read; options outside the latest dq_fix_paths call, a stale decision, a draft the fix path does not allow and a report before the outbox is decided are refused with a Guardrail line; an input that breaks its tool's schema is refused
+- [x] G2: AC-09 against the scripted stand-in, code refuses an alert whose named group holds under half its grouping's base or whose case has fewer than three records read, options that do not come from the newest fix-path result, a decision on options no longer shown, a draft kind the approved path lacks and a report while drafts wait, each with a Guardrail line, and any input that breaks its tool's schema
   CHECK: node tests/live.mjs guards
   EXPECT: LIVE OK: guards
   EVIDENCE: automatic-evidence=v1; definition-sha256=9d8f3224882fd385aff6c70bd695e60a069e7f69e28fa0a405f80b4f03c0816b; exit=0; EXPECT=matched; output-sha256=8bcd79c9f2ab9e6a89c6512a2b84717bb3ad71dd670db637ee8b4defe3e79f0c; output-bytes=100; shell=/bin/sh; cwd=/home/claude/proc-data-quality; path=14bdffb0e8ca/16 entries
@@ -37,7 +37,7 @@ Scope: the live agent with all 17 tools and its guardrails in code, the board's 
 - [x] G7: AC-13 control: the world suite plants guardrail violations in copies of the scripts and the script checker catches each, while the world's own checks still pass
   CHECK: node tests/world.mjs
   EXPECT: WORLD OK
-  EVIDENCE: automatic-evidence=v1; definition-sha256=6bbf52f45304fe7b7ff95f23bab95a14222b87cf6c9476b2190271b89c579818; exit=0; EXPECT=matched; output-sha256=c316c05e412216998e81911a190645b3705dd2389666409892c2a979f21a8585; output-bytes=4579; shell=/bin/sh; cwd=/home/claude/proc-data-quality; path=14bdffb0e8ca/16 entries
+  EVIDENCE: automatic-evidence=v1; definition-sha256=6bbf52f45304fe7b7ff95f23bab95a14222b87cf6c9476b2190271b89c579818; exit=0; EXPECT=matched; output-sha256=72e16c8b43fdfa89bfdc69673564d6cce63900aa8f30ec99639e16eef5e5320e; output-bytes=4579; shell=/bin/sh; cwd=/home/claude/proc-data-quality; path=14bdffb0e8ca/16 entries
 
 - [x] G8: AC-14 the board's cells, people rows and weekly cohorts equal the engine's figures after a scan; every cell opens its exceptions; the table views hold the same numbers; no tile sums spend across exceptions
   CHECK: node tests/accept.mjs board
@@ -77,7 +77,7 @@ Scope: the live agent with all 17 tools and its guardrails in code, the board's 
 - [x] G15: every suite passes, M1's included
   CHECK: node tests/run-all.mjs
   EXPECT: ALL SUITES PASSED
-  EVIDENCE: automatic-evidence=v1; definition-sha256=44b70cde5d3146c4d6e0f2ec1e50b1fe0c51ec72c748b6d4cc7bce3ddf8692de; exit=0; EXPECT=matched; output-sha256=611f38431bfc354ed7d4b7ef28ffddd4fded5c7afb9c25d6bf7849ec933a5edf; output-bytes=58592; shell=/bin/sh; cwd=/home/claude/proc-data-quality; path=14bdffb0e8ca/16 entries
+  EVIDENCE: automatic-evidence=v1; definition-sha256=44b70cde5d3146c4d6e0f2ec1e50b1fe0c51ec72c748b6d4cc7bce3ddf8692de; exit=0; EXPECT=matched; output-sha256=1683a0f5c99a1165865185107843abfed559c00827b75f2b889e90752c660adb; output-bytes=58592; shell=/bin/sh; cwd=/home/claude/proc-data-quality; path=14bdffb0e8ca/16 entries
 
 - [ ] G16: AC-20 Victor runs one scenario live with his own key, end to end within the caps, and the audit export shows model, usage and cost
   EVIDENCE: pending

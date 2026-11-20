@@ -299,6 +299,6 @@ Corrections B3 to B7 stand as PLAN.md §1.6 resolves them: B3 by N1, B4 by N3, B
 | AC-11 | No 41st model call; none once €3 is spent; the cost meter equals usage × price within 1e-9 | `node tests/live.mjs caps` | met |
 | AC-12 | The six scenarios play offline without a key, with the SIMULATION tape and recomputed figures, along both decision paths and accepting the risk | `node tests/sims.mjs` | met |
 | AC-13 | `tools/check_world.mjs` passes every simulation script under the live guardrails | `node tools/check_world.mjs`; the world suite's planted violations | met |
-| AC-14 | The board's cells, people rows and weekly cohorts equal the engine's figures; every cell opens its exceptions; the table views hold the same numbers; no tile sums spend across exceptions | `node tests/accept.mjs board` | met |
+| AC-14 | Cells, people rows and the eight cohorts show the engine's numbers; each cell lists its exceptions; the tables agree with the views; no tile adds spend up over exceptions | `node tests/accept.mjs board` | met |
 | AC-15 | Nothing reads "closed" for an exception a re-scan still finds; an approved fix shows "approved, re-scan pending" and its projection | `node tests/accept.mjs honesty`; the sims suite's cards and tiles | met |
 | AC-20 | Victor runs one scenario live with his key, end to end within the caps; the audit export shows model, usage and cost | Victor, with his key (section 9.4); the recorder case proves the export's fields against the stand-in | open: Victor's run |

@@ -402,7 +402,7 @@ if (chosen.includes("sweep")) {
 
 // ---- custom ------------------------------------------------------------------------------------------
 if (chosen.includes("custom")) {
-  const tip = "Our Lyon buyers say lab orders never show their contract. Which lines, and who has to fix them?";
+  const tip = "Our Lyon buyers say lab orders never show their contract. Which lines are affected, and who should correct them?";
   const fake = createFakeClaude([
     { ...tu("toolu_u1", "dq_scan", { rules: ["DQ-01"], filters: [{ key: "plant", values: ["3010"] }] }, { text: "I scan the contract rule at Lyon." }), expect: (req, { check }) => check(String(req.messages[0].content).includes(`"${tip}"`), "the opening message carries the person's words unchanged") },
     tu("toolu_u2", "ui_final_report", { outcome: "nothing_found", markdown: "## Custom what-if\n\nThis short run stops after the scan." }),

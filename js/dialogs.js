@@ -185,7 +185,7 @@ export function askCustomScenario(initial = "") {
   return new Promise((resolve) => {
     let modal;
     const area = h("textarea", { class: "vc-textarea", id: "custom-scenario", maxlength: "800", autofocus: true,
-      placeholder: "Example: Our Duisburg buyers say half their safety-glove orders show no contract in the compliance report. Which lines, and who has to fix them?" }, initial);
+      placeholder: "Example: Our Duisburg buyers say half their safety-glove orders show no contract in the compliance report. Which lines are affected, and who should correct them?" }, initial);
     const err = h("div", { class: "vc-help vc-help--error field-msg", role: "status" });
     const ok = h("button", { class: "vc-button", type: "button", id: "btn-custom-ok" }, icon("check", 18), "Use this tip");
     ok.addEventListener("click", () => {
