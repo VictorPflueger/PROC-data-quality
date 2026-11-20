@@ -5,7 +5,7 @@ export const APP = {
   name: "Data Quality Agent",
   fullName: "Procurement Data Quality Agent",
   subtitle: "Procurement data quality",
-  version: "2.0.0"
+  version: "2.1.0"
 };
 
 export const ANTHROPIC = {

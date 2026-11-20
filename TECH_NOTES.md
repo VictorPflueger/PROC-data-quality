@@ -2,7 +2,7 @@
 
 The Data Quality Agent runs as a static page and, in Live mode, calls the Claude API directly from the browser and nothing else. Every external detail the code depends on is recorded here with its source and the date it was verified. If a fact changes, update this file first, then `js/config.js`.
 
-**Basis.** Version **2.0.0**, 20 November 2026: the presenter. The page was rebuilt for customer presentations: the tip and five steps in a step bar, four key figures top right, Vici's guide with a five-minute talk track, the byline in the footer, and Live mode in a dialog of its own (section 9.3). The engine, the world, the seventeen tools with their guardrails, the figure audit, the live agent, the six simulation scripts and the audit log are version 1.0.0's and compute what they computed then; version 1.0.0's build plan, independent review and gates stay in the git history (commit `6386bd6`). The page uses Vici v1.0.0 at commit `f7bf7e0`. Sections 1 to 3 record the API facts the live agent rests on, probed on 19 November 2026. Section 4 is the browser's security policy and storage; section 5 the world; section 6 how the engine reads the method; section 7 the agent in Live mode and its guardrails; section 8 Simulation and the session-cost estimate; section 9 the decisions and open points; sections 10 and 11 the verification log and the acceptance checklist.
+**Basis.** Version **2.1.0**, 20 November 2026: the presenter, with the next action named in every step (section 9.3, P13). The page was rebuilt for customer presentations: the tip and five steps in a step bar, four key figures top right, Vici's guide with a five-minute talk track, the byline in the footer, and Live mode in a dialog of its own (section 9.3). The engine, the world, the seventeen tools with their guardrails, the figure audit, the live agent, the six simulation scripts and the audit log are version 1.0.0's and compute what they computed then; version 1.0.0's build plan, independent review and gates stay in the git history (commit `6386bd6`). The page uses Vici v1.0.0 at commit `f7bf7e0`. Sections 1 to 3 record the API facts the live agent rests on, probed on 19 November 2026. Section 4 is the browser's security policy and storage; section 5 the world; section 6 how the engine reads the method; section 7 the agent in Live mode and its guardrails; section 8 Simulation and the session-cost estimate; section 9 the decisions and open points; sections 10 and 11 the verification log and the acceptance checklist.
 
 ---
 
@@ -243,6 +243,7 @@ A partner review of version 1.0.0 found a prototype that proved everything and t
 | P10 | Parity with Rebate Hunter's shell is retired | The presenter replaces the shared shell; the shared Vici suites still run unchanged |
 | P11 | Names, not ids, and no tool names on screen (`js/plain.js`) | A newcomer reads people and cities, not U190 or a tool's name |
 | P12 | A text the figure audit refused twice shows with an *Unchecked* tag on its card, as before | Honesty survives the new screens |
+| P13 | Version 2.1.0: each step ends with a primary button that names where it leads (*Next: find the cause*); where the person must act, a merlot *Your turn* line says what to do and points at the action; after six seconds without a click or a key that action pulses, a still ring with reduced motion; the bar's Next is secondary | Victor, 20 November 2026: alone with the link, a viewer overlooks the Next button top right and does not see that it is their turn |
 
 ### 9.4 Open for Victor
 
@@ -256,6 +257,8 @@ A partner review of version 1.0.0 found a prototype that proved everything and t
 | R17 | Doing nothing's yearly cost | The method costs a year's new exceptions at the case's average past cost (12 × *f* × *E* / *n*). In scenario 2 that is about €10,293 a year against €3,482 for the last 365 days, because the case gains 68 exceptions a year and holds 23. The card now says how the figure is costed. If you would rather cost only the share that stays open past the 14-day window, that is a change to the method (its fix-path table); I would make it in a later version |
 
 ## 10. Verification log
+
+**20 November 2026, version 2.1.0.** The next action named in every step (section 9.3, P13). `node tests/run-all.mjs`: ALL SUITES PASSED (15 of 15). The presenter suite grew from 78 to 92 checks: the named Next on Spot, Check and Calculate and after the decision, each in view and the one primary button; the *Your turn* lines on the review, the decision and the drafts; the nudge after six idle seconds, calmed by a key; a still ring instead of the pulse with reduced motion. Screens at 1920 × 1080 in the light theme and 1280 × 720 in the dark theme were looked at for every step and the review.
 
 **20 November 2026, version 2.0.0.** Node.js 22.23.5; Playwright with Chromium 157 for the browser suites; a Vici checkout next to the repository whose release files equal `f7bf7e0`. Vici's own guide check (`check-guide-render`) passes against the page: it opens once per tab, focus and keyboard behave, `?guide=0` and `?guide=present` work, full screen on a phone. `node tests/run-all.mjs`: ALL SUITES PASSED (15 of 15). No test called a real API; no key was used.
 
@@ -273,9 +276,9 @@ A partner review of version 1.0.0 found a prototype that proved everything and t
 
 **Check digits.** `js/vat_check.js` agrees with python-stdnum 2.2 on 37,795 generated numbers across DE, AT, IT, NL, GB, CH, FR, ES and EL: no disagreement (run outside the repository on 19 November 2026).
 
-## 11. Acceptance checklist (version 2.0.0)
+## 11. Acceptance checklist (version 2.1.0)
 
-`node tests/run-all.mjs` runs every suite. AC-01 to AC-07 were met in version 0.1.0, AC-08 to AC-15 in version 0.2.0 and AC-16 to AC-23 in version 1.0.0; this table says how version 2.0.0 meets each, and adds AC-24 and AC-25 for the presenter.
+`node tests/run-all.mjs` runs every suite. AC-01 to AC-07 were met in version 0.1.0, AC-08 to AC-15 in version 0.2.0 and AC-16 to AC-23 in version 1.0.0; this table says how version 2.1.0 meets each, and adds AC-24 to AC-26 for the presenter.
 
 | # | Criterion | Proven by | Status |
 |---|---|---|---|
@@ -304,3 +307,4 @@ A partner review of version 1.0.0 found a prototype that proved everything and t
 | AC-23 | README, DESIGN, TECH_NOTES, DATA_SOURCES and DEMO_SCRIPT complete and lean; `tests/hygiene.mjs` passes | `node tests/docs.mjs`; `node tests/hygiene.mjs` | met |
 | AC-24 | The guide follows Vici: it opens by itself once per tab, explains the four key figures, and its talk track quotes the engine's figures for the default case | `node tests/presenter.mjs kpis`; Vici's guide check (check-guide-render in the ViciDesign repository) against the page | met |
 | AC-25 | The first screen offers at most 12 controls; no step shows a tool name, a user id, an em dash or a broken value | `node tests/presenter.mjs lean` | met |
+| AC-26 | Every step says what to do next where the reading ends: a Next button that names where it leads, in view at 1920 × 1080 and 1280 × 720, or a *Your turn* line where the person must act; that action pulses after six idle seconds, without motion when reduced motion is set | `node tests/presenter.mjs steps paths layout` | met |

@@ -2,7 +2,7 @@
 
 An AI agent for procurement data. It takes a one-sentence tip, finds the records behind it, works out why they are wrong and who can fix them, and has a rule engine cost each way to fix them. A person decides. Nothing is ever sent.
 
-Live site: <https://victorpflueger.github.io/PROC-data-quality/> (GitHub Pages, from `main`), version 2.0.0. GlobalCorp SE and all its data are fictional: no client data. You are interacting with an AI system.
+Live site: <https://victorpflueger.github.io/PROC-data-quality/> (GitHub Pages, from `main`), version 2.1.0. GlobalCorp SE and all its data are fictional: no client data. You are interacting with an AI system.
 
 Built by Victor Pflüger: [LinkedIn](https://www.linkedin.com/in/victorpflueger), [website](https://victorpflueger.github.io/VIP/index.html).
 
@@ -35,7 +35,7 @@ They sit top right and move as you step through. The engine computes them, never
 ## Presenting it
 
 - **The guide.** *How it works* opens by itself once per tab. Its last chapter is the five-minute talk track, with the default case's figures filled in from the engine. `?guide=present` opens it on the talk track; `?guide=0` keeps it closed.
-- **Moving.** The arrow keys (or a presentation clicker), Back and Next, or a click on a step. Each step shows at once; the page waits only where a person decides.
+- **Moving.** Each step ends with a Next button that names where it leads; the arrow keys (or a presentation clicker), Back and Next in the bar, or a click on a step do the same. Each step shows at once; where a person decides, a *Your turn* line says what to do.
 - **Deep links.** `?case=early-pay&step=4` opens a case on its decision. The cases: `early-pay` (the default, Paying too early), `punchout`, `unclassified`, `requester`, `onboarding` and `duplicate`.
 - **The script.** [DEMO_SCRIPT.md](DEMO_SCRIPT.md) has what to say, step by step, and the questions that will come.
 

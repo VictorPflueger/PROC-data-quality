@@ -122,6 +122,27 @@ html { font-size: clamp(93.75%, 0.48vw + 50%, 112.5%); }
 }
 .panel--plain { background: transparent; border: 0; box-shadow: none; padding: 0; overflow: visible; }
 .story { display: flex; flex-direction: column; gap: 14px; }
+
+/* ---- what to do next: the step's Next button, the person's turn, the nudge -------------------------- */
+.stage { --nudge-ring: color-mix(in oklab, var(--vc-accent) 32%, transparent); }
+.story-foot { margin-top: auto; position: sticky; bottom: 0; padding-top: 10px; background: var(--vc-surface); }
+.cta { --_h: 52px; --_fs: var(--fs-lg); flex: none; }
+.story-foot .cta { width: 100%; justify-content: space-between; }
+.your-turn {
+  display: inline-flex; flex-wrap: wrap; align-items: center; gap: 6px 10px;
+  width: fit-content; max-width: 100%; margin: 0; padding: 8px 12px;
+  border: 1px solid var(--vc-accent); border-radius: var(--vc-radius-md);
+  background: var(--vc-accent-soft); color: var(--vc-on-accent-soft);
+  font-size: var(--vc-font-size-md); font-weight: var(--vc-weight-semibold);
+}
+.your-turn .vc-icon { --vc-icon-size: 18px; }
+.decide-text { display: grid; gap: 8px; min-width: 0; }
+@keyframes nudge {
+  0%, 40%, 100% { box-shadow: 0 0 0 0 var(--nudge-ring); }
+  8%, 24% { box-shadow: 0 0 0 7px var(--nudge-ring); }
+  16%, 32% { box-shadow: 0 0 0 2px var(--nudge-ring); }
+}
+.stage[data-nudge="on"] .nudge:not(:disabled) { animation: nudge 6s var(--vc-ease-standard) infinite; }
 .step-title:focus { outline: none; }
 /* The tip's heading is for screen readers only. It takes focus on every step change, so unlike
    .vc-visually-hidden it must stay hidden while focused: showing it would move the buttons under the
@@ -358,8 +379,11 @@ html { font-size: clamp(93.75%, 0.48vw + 50%, 112.5%); }
 }
 @media (prefers-reduced-motion: reduce) {
   .kpi-value.flip, .mode-tag[data-mode="live"]::before { animation: none; }
+  .stage[data-nudge="on"] .nudge:not(:disabled) { animation: none; box-shadow: 0 0 0 4px var(--nudge-ring); }
 }
 @media (forced-colors: active) {
+  .stage[data-nudge="on"] .nudge:not(:disabled) { animation: none; outline: 3px solid Highlight; outline-offset: 2px; }
+  .your-turn { border: 2px solid CanvasText; }
   .hex::before { background: Canvas; }
   .hex { background: CanvasText; }
   .kpi[data-state="gain"], .kpi[data-state="risk"] { border: 2px solid CanvasText; }
@@ -368,6 +392,8 @@ html { font-size: clamp(93.75%, 0.48vw + 50%, 112.5%); }
 /* Short screens (a laptop at 1280 × 720): the decision and the drafts keep their buttons in view. */
 @media (max-height: 820px) {
   .step { padding: 14px var(--gutter); gap: 14px; }
+  .cta { --_h: 44px; --_fs: var(--vc-font-size-md); }
+  .your-turn { padding: 6px 10px; font-size: var(--vc-font-size-sm); }
   .panel { padding: 16px 18px; }
   .story { gap: 10px; }
   .step-title { font-size: clamp(1.45rem, 1.2vw + 0.85rem, 2rem); }

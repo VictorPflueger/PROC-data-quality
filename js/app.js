@@ -93,8 +93,9 @@ export function initApp() {
     back.disabled = state.step === 0;
     const canNext = state.step < max;
     next.replaceChildren("Next", h("span", { class: "vc-icon vc-icon--chevron-right", "aria-hidden": "true" }));
-    // On the tip the stage's Start button is the one primary action; Next starts the run too.
-    next.classList.toggle("vc-button--secondary", state.step === 0);
+    // The step's own button (Start, or Next with where it leads) is the one primary action on the
+    // stage; the bar's Next does the same for a presenter, so it stays secondary.
+    next.classList.add("vc-button--secondary");
     next.disabled = !(canNext || (state.step === 0 && run.status === "idle"));
     next.title = !canNext && state.step === 4 && run.waiting === "decision" ? "Decide first" : "";
     stop.hidden = !(run.mode === "live" && run.status === "running");
@@ -126,6 +127,7 @@ export function initApp() {
     get scenario() { return byId(state.scenarioId) || scenarios[0]; },
     handlers: {
       onStart: (mode) => start(mode),
+      onGo: (n) => go(n),
       onCase: (id) => chooseCase(id),
       onDecide: (optionId, decision, note) => decide(optionId, decision, note),
       onDraft: (actionId, decision) => bus.emit("action_decision", { action_id: actionId, decision, by: "user" }),
@@ -176,6 +178,20 @@ export function initApp() {
   }
   // The detection → decision clock ticks while the run waits for a decision.
   setInterval(() => { if (state.scanWall !== null && state.decisionWall === null && state.run.status === "running") renderKpis(); }, 1000);
+
+  // ---- the nudge ----------------------------------------------------------------------------------------
+  // After a few seconds without a click or a key, the step's next action pulses (the class "nudge" in
+  // js/steps_view.js marks it), so someone alone with the link sees where to go on. Any click, key or
+  // scroll calms it again. Reduced motion shows a still ring instead (css/app.css).
+  const NUDGE_MS = 6000;
+  let nudgeTimer = 0;
+  function armNudge() {
+    clearTimeout(nudgeTimer);
+    if (stage.dataset.nudge !== "off") stage.dataset.nudge = "off";
+    nudgeTimer = setTimeout(() => { stage.dataset.nudge = "on"; }, NUDGE_MS);
+  }
+  for (const type of ["pointerdown", "keydown", "wheel"]) document.addEventListener(type, armNudge, { capture: true, passive: true });
+  armNudge();
 
   // ---- navigation -------------------------------------------------------------------------------------
   function go(n, { focus = true } = {}) {

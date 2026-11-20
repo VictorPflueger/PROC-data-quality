@@ -2,7 +2,9 @@
 // same tools and scripts, tests/lib/expected.mjs), so no expected number is typed here.
 //   steps    the tip and the five steps by click, the arrow keys, Back and Next and ?step=; each step
 //            shows at once after Start (under 1.5 s); ?step=4 waits for the decision; ?step=5 for the
-//            drafts; ?case= opens another case
+//            drafts; ?case= opens another case; each step ends with a Next button that names where it
+//            leads, or says "Your turn" where the person must act, and that action pulses after six idle
+//            seconds (still with reduced motion)
 //   kpis     four key figures in the header, top right, sensible before anything happens; after the
 //            decision they show the engine's figures, the clock stops, and Session cost equals the
 //            estimate of the same run in Node
@@ -177,10 +179,45 @@ await runCase("steps", async (c) => {
   c["keyboard: Tabs to Start, Tabs to Approve"] = `${toStart}, ${toApprove}`;
   await kb.context.close();
 
-  // Reduced motion: the key figures change without their flip.
+  // What to do next: each step names it where the reading ends, and the person's turn says so.
+  const nx = await newPage();
+  await open(nx.page);
+  await nx.page.click("#btn-start");
+  const cta = () => nx.page.$eval("#btn-cta", (b) => { const r = b.getBoundingClientRect(); return { text: b.textContent.trim(), primary: !b.classList.contains("vc-button--secondary"), inView: r.top >= 0 && r.bottom <= innerHeight && r.width > 0 }; }).catch(() => null);
+  const steps = [];
+  for (const [n, label] of [[1, "Next: find the cause"], [2, "Next: what it costs"], [3, "Next: your decision"]]) {
+    const b = await cta();
+    steps.push(`${n}: ${b ? b.text : "none"}`);
+    ok(c, `step ${n} ends with "${label}", in view`, b && b.text === label && b.primary && b.inView, JSON.stringify(b));
+    await nx.page.click("#btn-cta");
+    await nx.page.waitForFunction((k) => document.querySelector('.stepbar .vc-step__button[aria-current="step"]')?.dataset.step === String(k), n + 1, { timeout: 5000 });
+  }
+  ok(c, "the bar's Next stays secondary", await nx.page.$eval("#btn-next", (b) => b.classList.contains("vc-button--secondary")));
+  const turn4 = await nx.page.locator(".decide-head .your-turn").textContent().catch(() => "");
+  ok(c, "the decision says it is your turn and what to do", /^Your turn\s*Approve one way to fix it, or accept the risk\.$/.test(turn4.trim()) && (await nx.page.locator("#btn-cta").count()) === 0, turn4);
+  ok(c, "the recommended Approve is the action that pulses", await nx.page.$eval('.opt[data-recommended="true"] [data-action="approve"]', (b) => b.classList.contains("nudge")));
+  await nx.page.waitForTimeout(6600);
+  const idle = await nx.page.evaluate(() => ({ nudge: document.getElementById("stage").dataset.nudge, anim: getComputedStyle(document.querySelector('.opt[data-recommended="true"] [data-action="approve"]')).animationName }));
+  ok(c, "after six idle seconds it pulses", idle.nudge === "on" && idle.anim === "nudge", JSON.stringify(idle));
+  await nx.page.keyboard.press("Shift");
+  ok(c, "a key calms it again", (await nx.page.$eval("#stage", (e) => e.dataset.nudge)) === "off");
+  await nx.page.click('.opt[data-recommended="true"] [data-action="approve"]');
+  const b4 = await nx.page.waitForSelector("#btn-cta", { timeout: 5000 }).then(() => cta());
+  ok(c, 'after the decision the step ends with "Next: the drafts", in view', b4 && b4.text === "Next: the drafts" && b4.inView, JSON.stringify(b4));
+  await nx.page.click("#btn-cta");
+  const turn5 = await nx.page.locator(".decide-head .your-turn").textContent().catch(() => "");
+  ok(c, "the drafts say it is your turn", /^Your turn\s*Approve or reject each draft/.test(turn5.trim()), turn5);
+  await approveDrafts(nx.page);
+  ok(c, "with the report done, nothing asks for a turn", (await nx.page.locator(".your-turn, #btn-cta").count()) === 0);
+  await nx.context.close();
+
+  // Reduced motion: the key figures change without their flip, and the nudge is a still ring.
   const rm = await newPage({ reducedMotion: "reduce" });
   await open(rm.page, `?case=${slug(LEAD)}&step=4`);
   await rm.page.waitForSelector('.opt[data-recommended="true"] [data-action="approve"]:not([disabled])', { timeout: 10000 });
+  await rm.page.waitForTimeout(6600);
+  const still = await rm.page.$eval('.opt[data-recommended="true"] [data-action="approve"]', (b) => ({ name: getComputedStyle(b).animationName, ring: getComputedStyle(b).boxShadow, nudge: document.getElementById("stage").dataset.nudge }));
+  ok(c, "with reduced motion the nudge does not move but still shows a ring", still.nudge === "on" && still.name === "none" && still.ring !== "none", JSON.stringify(still));
   await rm.page.click('.opt[data-recommended="true"] [data-action="approve"]');
   await rm.page.waitForTimeout(200);
   const anim = await rm.page.$eval("#kpi-cost .kpi-value", (e) => ({ flip: e.classList.contains("flip"), name: getComputedStyle(e).animationName }));
@@ -331,6 +368,8 @@ await runCase("paths", async (c) => {
     await page.waitForSelector(".review-table", { timeout: 10000 });
     const rows = await page.locator(".review-table tbody tr").count();
     ok(c, "the review lists every AI suggestion and waits", rows > 0 && (await page.$eval('.vc-step[data-step="check"]', (e) => e.dataset.turn)) === "yours", `${rows} rows`);
+    const turn = await page.locator(".story-foot .your-turn").textContent().catch(() => "");
+    ok(c, "the story says it is your turn, and nothing says the agent is still checking", /^Your turn\s*Check the AI's suggestions, then confirm them\.$/.test(turn.trim()) && !(await page.locator(".story .step-wait").count()), turn);
     ok(c, "Confirm waits until every line is decided", await page.isDisabled("#btn-review-confirm"));
     await page.click(".review-table tbody tr >> nth=0 >> [data-action=\"reject\"]");
     await page.click("#btn-review-all");
@@ -338,6 +377,7 @@ await runCase("paths", async (c) => {
     await page.click("#btn-review-confirm");
     await page.waitForSelector(".case-card", { timeout: 10000 });
     ok(c, "after the review the case shows what you approved", /AI suggestions approved/.test(await page.locator(".case-card").innerText()) && exp.alert !== null);
+    ok(c, 'and the story ends with "Next: what it costs"', (await page.locator("#btn-cta").textContent().catch(() => "")).trim() === "Next: what it costs");
     await context.close();
   }
 });
@@ -415,12 +455,12 @@ await runCase("layout", async (c) => {
       await open(page);
       await look("0 the tip", "#btn-start");
       await page.click("#btn-start");
-      await look("1 Spot", null);
-      for (const n of [2, 3]) { await goStep(page, n); await look(`${n} step`, null); }
+      await look("1 Spot", "#btn-cta");
+      for (const n of [2, 3]) { await goStep(page, n); await look(`${n} step`, "#btn-cta"); }
       await goStep(page, 4);
       await look("4 Propose", '.opt[data-recommended="true"] [data-action="approve"]');
       await page.click('.opt[data-recommended="true"] [data-action="approve"]');
-      await look("4 decided", null);
+      await look("4 decided", "#btn-cta");
       await goStep(page, 5);
       await look("5 drafts", '.draft[data-status="pending"] [data-action="approve"]');
       await approveDrafts(page);

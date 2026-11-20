@@ -95,6 +95,31 @@ function waiting(text) {
   return h("p", { class: "step-wait" }, h("span", { class: "vc-spinner vc-spinner--sm", "aria-hidden": "true" }), text);
 }
 
+// ---- what to do next ------------------------------------------------------------------------------
+// Every step says what to do next where the reading ends: a Next button that names where it leads, or,
+// where the person must act, a "Your turn" line beside the action. After a few idle seconds the action
+// pulses (js/app.js sets data-nudge on the stage; the class "nudge" marks what pulses).
+
+const NEXT = { 1: "Next: find the cause", 2: "Next: what it costs", 3: "Next: your decision", 4: "Next: the drafts" };
+const reachable = (run, n) => run.status !== "idle" && Math.max(1, run.reached) >= n;
+
+function nextButton(n, handlers, label = NEXT[n]) {
+  return h("button", { type: "button", class: "vc-button cta nudge", id: "btn-cta", on: { click: () => handlers.onGo(n + 1) } }, label, icon("chevron-right"));
+}
+
+function yourTurn(text, ...extra) {
+  return h("p", { class: "your-turn", role: "status" }, h("span", { class: "vc-tag vc-tag--solid your-turn__tag" }, "Your turn"), h("span", { class: "your-turn__text" }, text), ...extra);
+}
+
+/** The foot of a step's story: the Next button, the person's turn, or the agent still at work. */
+function storyFoot(run, n, ctx) {
+  let body = null;
+  if (n === 2 && run.review && !run.review.decision && run.waiting === "review") body = yourTurn("Check the AI's suggestions, then confirm them.", icon("arrow-right"));
+  else if (reachable(run, n + 1)) body = nextButton(n, ctx.handlers);
+  else if (run.status === "running") body = waiting("The agent is working on the next step.");
+  return body ? h("div", { class: "story-foot" }, body) : null;
+}
+
 function hive(world, scan, caseRules) {
   const facts = scan ? scanFacts(world, scan) : null;
   const scanned = new Set(scan ? (scan.rules && scan.rules.length ? scan.rules : RULES.map((r) => r.id)) : []);
@@ -142,7 +167,7 @@ function tipStep(run, ctx) {
       h("blockquote", { class: "tip-quote" }, `“${scenario.tip}”`),
       h("p", { class: "step-lead" }, "That sentence is all the agent gets. It works out the rest from the company's data."),
       h("div", { class: "start-row" },
-        h("button", { class: "vc-button", type: "button", id: "btn-start", on: { click: () => handlers.onStart("simulation") } }, icon(started ? "refresh" : "play"), started ? "Start again" : "Start the agent"),
+        h("button", { class: ["vc-button", started ? "" : "nudge"], type: "button", id: "btn-start", on: { click: () => handlers.onStart("simulation") } }, icon(started ? "refresh" : "play"), started ? "Start again" : "Start the agent"),
         h("button", { class: "vc-button vc-button--secondary", type: "button", id: "btn-live", on: { click: () => handlers.onStart("live") } }, icon("key"), "Run it live")),
       h("p", { class: "step-note" }, "Start plays a scripted run of the agent through the real rules and engine: free, no key, works offline. Run it live calls Claude with your own API key.")),
     h("div", { class: "panel data-card" },
@@ -162,7 +187,7 @@ function spotStep(run, ctx) {
   const items = itemsOf(run, 1);
   if (!scan) {
     return h("section", { class: "step" },
-      h("div", { class: "panel story" }, h("h2", { class: "step-title", id: "step-title" }, "The agent reads the data"), agentWords(items, world), waiting("The rules are running."), did(run, 1, world)),
+      h("div", { class: "panel story" }, h("h2", { class: "step-title", id: "step-title" }, "The agent reads the data"), agentWords(items, world), waiting("The rules are running."), did(run, 1, world), storyFoot(run, 1, ctx)),
       h("div", { class: "panel" }, hive(world, null, null)));
   }
   const f = scanFacts(world, scan);
@@ -182,7 +207,8 @@ function spotStep(run, ctx) {
       h("ul", { class: "facts" },
         h("li", {}, h("span", { class: "fact-value" }, euro(f.spend)), h("span", { class: "fact-text" }, `of orders on these ${plural(f.lines, "line", "lines")}`)),
         f.before ? h("li", {}, h("span", { class: "fact-value" }, int(f.before)), h("span", { class: "fact-text" }, `were flagged before and are still open; the oldest has waited ${plural(f.oldestDays, "day", "days")}`)) : null,
-        f.fresh ? h("li", {}, h("span", { class: "fact-value" }, int(f.fresh)), h("span", { class: "fact-text" }, f.fresh === 1 ? "is new today" : "are new today")) : null)),
+        f.fresh ? h("li", {}, h("span", { class: "fact-value" }, int(f.fresh)), h("span", { class: "fact-text" }, f.fresh === 1 ? "is new today" : "are new today")) : null),
+      storyFoot(run, 1, ctx)),
     h("div", { class: "panel" }, hive(world, scan, run.alert ? new Set(run.alert.rules || []) : null)));
 }
 
@@ -208,7 +234,8 @@ function checkStep(run, ctx) {
     chain.length ? h("ol", { class: "chain" }, chain.slice(-6).map(([kind, label, text]) => h("li", { dataset: { kind } },
       h("span", { class: "chain-label" }, label, kind === "hypothesis" || kind === "revised" || kind === "say" ? " (AI)" : ""),
       h("p", { class: "chain-text" }, text)))) : waiting("The agent is testing a cause."),
-    !alert && run.status === "running" && chain.length ? waiting("Still checking.") : null);
+    !alert && run.status === "running" && run.waiting !== "review" && chain.length ? waiting("Still checking.") : null,
+    storyFoot(run, 2, ctx));
   let right;
   if (run.review && (!run.review.decision || !alert)) right = reviewPanel(run, ctx);
   else if (alert) right = caseCard(alert, world, run);
@@ -259,9 +286,9 @@ function reviewPanel(run, ctx) {
       h("thead", {}, h("tr", {}, h("th", { scope: "col" }, "Order line text"), h("th", { scope: "col" }, "Suggested group"), h("th", { scope: "col" }, "Confidence"), h("th", { scope: "col" }, "Your call"))),
       h("tbody", {}, items.map(row)))),
     done ? null : h("div", { class: "review-actions" },
-      h("button", { type: "button", class: "vc-button vc-button--secondary", id: "btn-review-all", on: { click: () => { for (const it of items) choice.set(it.line_id, "approved"); handlers.onRerender(); } } }, "Approve all"),
+      h("button", { type: "button", class: ["vc-button", "vc-button--secondary", decided < items.length ? "nudge" : ""], id: "btn-review-all", on: { click: () => { for (const it of items) choice.set(it.line_id, "approved"); handlers.onRerender(); } } }, "Approve all"),
       h("button", {
-        type: "button", class: "vc-button", id: "btn-review-confirm", disabled: decided < items.length,
+        type: "button", class: ["vc-button", decided < items.length ? "" : "nudge"], id: "btn-review-confirm", disabled: decided < items.length,
         on: { click: () => handlers.onReview(req.review_id, items.map((it) => ({ line_id: it.line_id, decision: choice.get(it.line_id) }))) }
       }, icon("check"), decided < items.length ? `Confirm (${int(items.length - decided)} to decide)` : "Confirm review")));
 }
@@ -275,7 +302,7 @@ function calculateStep(run, ctx) {
   const hist = lastResult(run, "dq_history");
   if (!fp) {
     return h("section", { class: "step" },
-      h("div", { class: "panel story" }, h("h2", { class: "step-title", id: "step-title" }, "The engine costs the case"), agentWords(items, world), waiting("Working out what the case costs."), did(run, 3, world)),
+      h("div", { class: "panel story" }, h("h2", { class: "step-title", id: "step-title" }, "The engine costs the case"), agentWords(items, world), waiting("Working out what the case costs."), did(run, 3, world), storyFoot(run, 3, ctx)),
       h("div", { class: "panel" }));
   }
   const c = fp.case || {};
@@ -303,7 +330,8 @@ function calculateStep(run, ctx) {
       h("h2", { class: "step-title", id: "step-title" }, title),
       agentWords(items, world),
       h("p", { class: "engine-note" }, icon("shield"), "Every figure here comes from the rule engine. The AI only explains them."),
-      did(run, 3, world)),
+      did(run, 3, world),
+      storyFoot(run, 3, ctx)),
     h("div", { class: "panel" }, h("div", { class: "figs" }, figs)));
 }
 
@@ -346,7 +374,7 @@ function proposeStep(run, ctx) {
         : status === "rejected" ? h("p", { class: "opt-status" }, "Rejected")
           : status === "closed" ? null
             : h("div", { class: "opt-actions" },
-              h("button", { type: "button", class: ["vc-button", opt.recommended ? "" : "vc-button--secondary"], dataset: { action: "approve" }, disabled: !open, on: { click: () => handlers.onDecide(opt.id, "approved") } }, "Approve"),
+              h("button", { type: "button", class: ["vc-button", opt.recommended ? "nudge" : "vc-button--secondary"], dataset: { action: "approve" }, disabled: !open, on: { click: () => handlers.onDecide(opt.id, "approved") } }, "Approve"),
               h("button", { type: "button", class: "vc-button vc-button--ghost", dataset: { action: "reject" }, disabled: !open, on: { click: () => handlers.onDecide(opt.id, "rejected") } }, "Reject")));
   });
   const nf = o.nothing?.figures || {};
@@ -371,11 +399,16 @@ function proposeStep(run, ctx) {
   const rec = o.options.find((x) => x.recommended);
   const title = ok ? (ok.nothing ? "Decided: the risk is accepted" : `Decided: path ${ok.decision.option_id}, ${plainText(world, ok.option?.title || "")}`)
     : `Your decision: ${spell(o.options.length)} ways to fix it, or do nothing`;
-  const note = ok
-    ? "Watch the figures top right. Nothing counts as fixed until a re-scan stops finding it; Next shows the drafts."
-    : `The agent recommends ${rec ? `path ${rec.id}` : "a path"}. The words are the AI's, every figure is the engine's.`;
+  const recText = `The agent recommends ${rec ? `path ${rec.id}` : "a path"}; its words are AI, every figure is the engine's.`;
+  let head;
+  if (ok) head = [h("p", { class: "step-note" }, "Watch the figures top right. Nothing counts as fixed until a re-scan stops finding it.")];
+  else if (open) head = [yourTurn("Approve one way to fix it, or accept the risk.", icon("arrow-down")), h("p", { class: "step-note note-line" }, recText, aiTag(), uncheckedTag(o.unchecked))];
+  else head = [h("p", { class: "step-note note-line" }, recText, aiTag(), uncheckedTag(o.unchecked))];
   return h("section", { class: "step step--wide" },
-    h("div", { class: "decide-head" }, h("div", {}, h("h2", { class: "step-title", id: "step-title" }, title), h("p", { class: "step-note note-line" }, note, aiTag(), uncheckedTag(o.unchecked)))),
+    h("div", { class: "decide-head" },
+      h("div", { class: "decide-text" }, h("h2", { class: "step-title", id: "step-title" }, title), head),
+      (ok || run.report) && reachable(run, 5) ? nextButton(4, handlers, ok ? NEXT[4] : "Next: the report")
+        : ok && run.status === "running" ? waiting("The agent is drafting.") : null),
     h("div", { class: "options", style: { "--n": String(cards.length) } }, cards));
 }
 
@@ -390,6 +423,7 @@ function prepareStep(run, ctx) {
   else if (pending) title = `${spell(pending).replace(/^./, (c) => c.toUpperCase())} ${pending === 1 ? "draft waits" : "drafts wait"} for your approval`;
   else if (!ok) title = "The drafts come after your decision";
   else title = "The agent drafts what the path allows";
+  const firstPending = run.drafts.find((d) => d.status === "pending")?.action_id;
   const drafts = run.drafts.map((d) => {
     const body = plainText(world, d.body || "");
     const preview = body.split(/\n{2,}/).find((p) => p.trim() && !/^Record \|/.test(p)) || "";
@@ -400,7 +434,7 @@ function prepareStep(run, ctx) {
       h("details", {}, h("summary", {}, "Show the full draft"), renderMarkdown(body)),
       d.status === "pending"
         ? h("div", { class: "draft-actions" },
-          h("button", { type: "button", class: "vc-button", dataset: { action: "approve" }, on: { click: () => handlers.onDraft(d.action_id, "approved") } }, "Approve"),
+          h("button", { type: "button", class: ["vc-button", d.action_id === firstPending ? "nudge" : ""], dataset: { action: "approve" }, on: { click: () => handlers.onDraft(d.action_id, "approved") } }, "Approve"),
           h("button", { type: "button", class: "vc-button vc-button--ghost", dataset: { action: "reject" }, on: { click: () => handlers.onDraft(d.action_id, "rejected") } }, "Reject"))
         : h("p", { class: "draft-status" }, d.status === "approved" ? "Approved. Not sent: this page has no email or ERP connection." : "Rejected"));
   });
@@ -412,12 +446,12 @@ function prepareStep(run, ctx) {
         h("button", { type: "button", class: "vc-button vc-button--secondary", id: "btn-audit", on: { click: () => handlers.onDownloadAudit() } }, icon("download"), "Download the audit log"),
         h("button", { type: "button", class: "vc-button vc-button--ghost", id: "btn-restart", on: { click: () => handlers.onRestart() } }, icon("refresh"), "Start again")))
     : null;
-  const note = run.report ? "Every decision is in the audit log."
-    : pending ? "Drafts go nowhere: approving one only marks it as cleared, in this tab. The report follows once each draft is decided."
-      : run.status === "running" ? "The agent is still at work." : "This run ended without a report.";
+  const note = run.report ? h("p", { class: "step-note" }, "Every decision is in the audit log.")
+    : pending ? yourTurn("Approve or reject each draft. Approving sends nothing; the report follows.", icon("arrow-down"))
+      : h("p", { class: "step-note" }, run.status === "running" ? "The agent is still at work." : "This run ended without a report.");
   return h("section", { class: "step step--wide" },
-    h("div", { class: "decide-head" }, h("div", {},
+    h("div", { class: "decide-head" }, h("div", { class: "decide-text" },
       h("h2", { class: "step-title", id: "step-title" }, title),
-      h("p", { class: "step-note" }, note))),
+      note)),
     h("div", { class: "prepare", dataset: { report: report ? "true" : "false" } }, h("div", { class: "drafts" }, drafts.length ? drafts : [h("div", { class: "panel" }, waiting(ok ? "Drafting." : "Decide in Propose first."))]), report));
 }

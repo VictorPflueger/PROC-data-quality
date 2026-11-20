@@ -43,6 +43,10 @@ export const COLOUR_PAIRS = [
   // The step bar.
   ["A step's name and hint", "text-muted", "bg-subtle", "text"],
   ["The step that waits for you: its hint", "accent-text", "bg-subtle", "text"],
+  ["Your turn: the callout's words on the soft merlot", "on-accent-soft", "accent-soft", "text"],
+  ["Your turn: the merlot tag against its callout", "accent", "accent-soft", "mark"],
+  ["Your turn: the callout's edge on a panel", "accent", "surface", "mark"],
+  ["The step's Next button", "on-accent", "accent", "text"],
   ["The step that waits for you: its number", "on-accent", "accent", "text"],
   ["The step on screen: its number", "on-accent-soft", "accent-soft", "text"],
   // Header and footer tags.
