@@ -225,3 +225,48 @@ export const WORLD_SCHEMA = {
 
 /** Every schema by name, for "$ref" across schemas. */
 export const ALL_DEFS = { ...SCHEMAS, ...DEFS };
+
+const TS = { type: "string", pattern: "^[0-9]{4}-[0-9]{2}-[0-9]{2}T" };
+const PARAM_NAME = { enum: ["day_rate_eur", "hours_per_day", "mass_setup_days", "mass_minutes_per_record", "mass_lead_days", "followup_prep_days",
+  "followup_owner_minutes", "followup_window_days", "source_fix_days", "source_lead_days", "cost_of_capital", "window_days"] };
+
+/** The JSON exports' own schemas (validated with the same validator and ALL_DEFS). */
+export const EXPORT_SCHEMAS = {
+  AuditExport: {
+    title: "The audit export (data-quality-<run>[-SIMULATION|-LIVE]-audit.json)",
+    type: "object",
+    required: ["app", "app_version", "rule_set_version", "engine_version", "world_version", "exported_at", "mode", "mode_statement", "ai_disclosure",
+      "company_note", "reviewer", "run", "model", "usage", "parameters", "parameter_changes", "run_facts", "cost", "counts", "events", "audit_log", "api_exchanges"],
+    properties: {
+      app: { type: "string", minLength: 1 }, app_version: { type: "string", pattern: "^[0-9]+\\.[0-9]+\\.[0-9]+$" },
+      rule_set_version: { type: "string", minLength: 1 }, engine_version: { type: "string", minLength: 1 }, world_version: nullable({ type: "string" }),
+      exported_at: TS, mode: nullable({ enum: ["live", "simulation"] }), mode_statement: { type: "string", minLength: 1 },
+      ai_disclosure: { type: "string", minLength: 1 }, company_note: { type: "string", minLength: 1 }, reviewer: { type: "string", minLength: 1 },
+      run: nullable({
+        type: "object", required: ["run_id", "mode", "entry", "title", "started_at", "ended_at", "status"],
+        properties: {
+          run_id: { type: "string", minLength: 1 }, mode: { enum: ["live", "simulation"] }, entry: { enum: ["scenario", "sweep", "custom"] },
+          scenario_id: nullable({ type: "string" }), title: { type: "string" }, tip: nullable({ type: "string" }), model: nullable({ type: "string" }),
+          sim_source: nullable({ enum: ["authored", "recorded"] }), started_at: TS, ended_at: nullable(TS), status: { type: "string", minLength: 1 }
+        },
+        additionalProperties: false
+      }),
+      model: nullable({ type: "string" }), usage: nullable({ type: "object" }),
+      parameters: nullable({
+        type: "object", required: ["in_effect", "changed", "source"],
+        properties: {
+          in_effect: { type: "object", required: PARAM_NAME.enum, patternProperties: { "^[a-z_]+$": { type: "number", minimum: 0 } }, additionalProperties: false },
+          changed: { type: "array", items: { type: "object", required: ["name", "label", "value", "default"], properties: { name: PARAM_NAME, label: { type: "string" }, value: { type: "number" }, default: { type: "number" } }, additionalProperties: false } },
+          source: { enum: ["defaults", "method dialog"] }
+        },
+        additionalProperties: false
+      }),
+      parameter_changes: { type: "array", items: { type: "object", required: ["ts", "name", "label", "from", "to"], properties: { ts: TS, name: PARAM_NAME, label: { type: "string" }, from: { type: "number" }, to: { type: "number" } }, additionalProperties: false } },
+      run_facts: nullable({ type: "object" }), cost: nullable({ type: "object" }), counts: { type: "object" },
+      events: { type: "array", items: { $ref: "#/$defs/RunEvent" } },
+      audit_log: { type: "array", items: { $ref: "#/$defs/AuditEvent" } },
+      api_exchanges: { type: "array", items: { type: "object" } }
+    },
+    additionalProperties: false
+  }
+};

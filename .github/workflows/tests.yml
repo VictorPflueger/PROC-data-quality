@@ -17,7 +17,7 @@ concurrency:
 jobs:
   node:
     # GitHub cuts job names at 100 characters.
-    name: Node.js suites (design, world, unit, engine, audit, tools, VAT, policy, hygiene, parity)
+    name: Node.js suites (design, world, unit, engine, audit, tools, VAT, policy, hygiene, docs, parity)
     # Pinned image: Playwright 1.56's system dependencies are known to install on Ubuntu 24.04.
     runs-on: ubuntu-24.04
     timeout-minutes: 10
@@ -30,16 +30,28 @@ jobs:
       # compares the shared shell with its main branch, and the world suite re-derives the shared
       # accounts from the commit they were taken from, so the clone keeps its history (about 2 MB).
       - run: git clone https://github.com/VictorPflueger/PROC-Rebate-Hunter ../PROC-Rebate-Hunter
-      # The hygiene check reads its private term list from the HYGIENE_TERMS secret if the repository
-      # has one; without it only the generic checks run (tests/hygiene.mjs).
-      - run: node tests/run-all.mjs tokens page-icon vici-files world unit engine audit tools vat policy hygiene parity
+      # Victor's website next to this checkout, but only once it carries this prototype's card: the
+      # page-icon suite then holds the card's name, icon and kind to the page (AC-18). Until the card is
+      # merged the clone is dropped again, and the suite checks the page's own icons.
+      - name: VIP's card for this prototype, if it exists
+        run: |
+          git clone --depth 1 https://github.com/VictorPflueger/VIP ../VIP
+          if grep -q 'name: "Data Quality Agent"' ../VIP/data/prototypes.js; then
+            echo "VIP carries the card: page-icon compares the page with it."
+          else
+            rm -rf ../VIP
+            echo "VIP has no card for this prototype yet: page-icon checks the page alone."
+          fi
+      # The hygiene check reads a private term list from the HYGIENE_TERMS secret if the repository
+      # has one; without it the generic checks run (tests/hygiene.mjs).
+      - run: node tests/run-all.mjs tokens page-icon vici-files world unit engine audit tools vat policy hygiene docs parity
         env:
           HYGIENE_TERMS: ${{ secrets.HYGIENE_TERMS }}
 
   browser:
     name: Browser suites (Playwright, Chromium)
     runs-on: ubuntu-24.04
-    timeout-minutes: 30
+    timeout-minutes: 40
     needs: node
     steps:
       - uses: actions/checkout@v4
@@ -52,7 +64,7 @@ jobs:
           path: ~/.cache/ms-playwright
           key: playwright-1.56.0-chromium-${{ runner.os }}
       - run: npm install -g playwright@1.56.0 && npx playwright install --with-deps chromium
-      - run: NODE_PATH="$(npm root -g)" node tests/run-all.mjs smoke sims live accept hexagon
+      - run: NODE_PATH="$(npm root -g)" node tests/run-all.mjs smoke sims live accept hexagon layout design
         env:
           DQ_TEST_OUT: ${{ runner.temp }}/data-quality-agent-tests
       - if: always()

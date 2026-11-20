@@ -1,7 +1,7 @@
 // Outbox tab: the drafts the approved fix path allows (mock change requests, owner follow-ups,
 // prevention requests, the risk memo). Every item is a draft that needs its own approval; approval only
-// changes its status here and marks the exceptions it covers as routed in the log. Nothing is sent,
-// and nothing is written to the data.
+// changes its status here and marks the exceptions it covers that are routed to its recipient as routed
+// in the log. Nothing is sent, and nothing is written to the data.
 
 import { bus } from "./events.js";
 import { h, clear } from "./dom.js";
@@ -21,10 +21,13 @@ export function createOutbox(panel, { onDecision, onCount } = {}) {
   }
 
   function render() {
+    // A rebuild must not strand the keyboard: focus that was in the panel stays in it (a draft that
+    // arrives while the focus rests on the list would otherwise drop it to the page).
+    if (panel.contains(document.activeElement)) refocus = true;
     clear(panel);
     const pending = [...actions.values()].filter((a) => a.status === "pending");
     panel.appendChild(h("div", { class: "outbox-head" },
-      h("span", { class: "outbox-safety" }, icon("shield", 18), h("span", {}, h("strong", {}, "Draft. Nothing is sent."), " The Data Quality Agent has no e-mail or ERP connection; approving marks a draft as cleared and the exceptions it covers as routed.")),
+      h("span", { class: "outbox-safety" }, icon("shield", 18), h("span", {}, h("strong", {}, "Draft. Nothing is sent."), " The Data Quality Agent has no e-mail or ERP connection; approving marks a draft as cleared and the exceptions it covers that are routed to its recipient as routed.")),
       pending.length > 1
         ? h("button", { class: "vc-button vc-button--secondary button-compact", type: "button", dataset: { action: "approve-all" }, on: { click: () => pending.forEach((a) => decide(a.draft, "approved")) } }, icon("check", 16), `Approve all ${pending.length} pending`)
         : null));
@@ -49,8 +52,9 @@ export function createOutbox(panel, { onDecision, onCount } = {}) {
 
   function card(d, status) {
     const label = KIND_LABELS[d.kind] || "Draft";
-    // The status is a Vici tag: merlot while it waits for you, success once approved, plain otherwise.
-    const tone = status === "pending" ? "vc-tag--accent" : status === "approved" ? "vc-tag--success" : "";
+    // The status is a Vici tag: solid merlot while it waits for you (as the rail's turn), merlot's tint
+    // once you approved it (your decision; nothing was sent), plain otherwise.
+    const tone = status === "pending" ? "vc-tag--solid" : status === "approved" ? "vc-tag--accent" : "";
     const statusText = status === "pending" ? "Pending approval"
       : status === "approved" ? "Approved — draft, not sent"
         : status === "expired" ? "Not decided: the run ended" : "Rejected";

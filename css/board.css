@@ -86,6 +86,8 @@
 .hex-cell[data-reading="true"] { --rim: var(--vc-info-solid); animation: fjordPulse 0.8s ease-in-out infinite alternate; }
 .hex-cell:hover .hex-face { filter: brightness(0.97); }
 .hex-cell:focus-visible { outline: none; --rim: var(--vc-focus); }
+/* The keyboard's focus wins over the agent's reading pulse: the rim stays in the focus colour. */
+.hex-cell[data-reading="true"]:focus-visible { animation: none; }
 .hex-cell:focus-visible .hex-face { inset: 4px 4.619px; }
 @keyframes fjordPulse { from { background-color: var(--vc-info-solid); } to { background-color: var(--vc-info-border); } }
 
@@ -122,12 +124,22 @@
 /* A rule's exceptions. */
 .ex-head { align-items: center; }
 .ex-head #btn-ex-close { margin-left: auto; }
-.ex-record { font-family: var(--vc-font-mono); font-weight: 600; white-space: nowrap; }
+/* Eight columns fit the board at 1280 × 720: the headings wrap, an order line's record breaks after
+   its order number, and the status takes the room its tags need. */
+.ex-table thead th { white-space: normal; vertical-align: bottom; }
+.ex-record { font-family: var(--vc-font-mono); font-weight: 600; }
 .ex-table tr[data-case="true"] .ex-record { color: var(--vc-text); font-weight: 800; }
 .ex-who { min-width: 96px; }
 .ex-who .who-name { display: block; white-space: nowrap; font-weight: 600; }
 .ex-who .who-role { display: block; color: var(--vc-text-muted); font-size: var(--fs-xs); }
-.ex-status { min-width: 170px; }
+.ex-status { min-width: 140px; }
+@media (max-width: 1400px) {
+  .ex-table th, .ex-table td { padding-inline: 8px; }
+  .ex-who { min-width: 84px; }
+  .ex-status { min-width: 120px; }
+  .ex-card { padding-inline: 8px; }
+  .ex-record { font-size: 0.8125rem; }
+}
 .ex-status .vc-tag, .people-path .vc-tag { white-space: normal; margin: 1px 4px 1px 0; }
 .ex-suggestion { font-size: var(--fs-xs); }
 

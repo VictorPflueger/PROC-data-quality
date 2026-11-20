@@ -1,4 +1,5 @@
-// Control bar: start, scenario picker, live sweep, model, replay speed, status, abort, reset, diagnostics.
+// Control bar: start, scenario picker, live sweep, model, replay speed, status, abort, reset, method,
+// diagnostics.
 // Live sweep and Custom what-if need the live agent; the model applies to Live, the replay speed to
 // Simulation.
 
@@ -18,7 +19,7 @@ const STATE_TONE = {
 const TONE_TAG = { "": "", active: "", waiting: "vc-tag--accent", done: "vc-tag--success", stopped: "vc-tag--danger" };
 
 /**
- * handlers: { onStart, onLiveScan, onSelectScenario(id), onSelectCustom(), onSelectModel(id), onSpeed(n), onAbort, onReset, onDiagnostics }
+ * handlers: { onStart, onLiveScan, onSelectScenario(id), onSelectCustom(), onSelectModel(id), onSpeed(n), onAbort, onReset, onMethod, onDiagnostics }
  */
 export function createControls(root, scenarios, handlers) {
   const startBtn = h("button", { class: "vc-button", type: "button", id: "btn-start" }, icon("play", 18), h("span", {}, "Start agent"));
@@ -58,9 +59,11 @@ export function createControls(root, scenarios, handlers) {
 
   const abortBtn = h("button", { class: "vc-button vc-button--danger", type: "button", id: "btn-abort" }, icon("stop", 18), "Abort");
   abortBtn.addEventListener("click", () => { if (!isDisabled(abortBtn)) handlers.onAbort(); });
-  // Reset and Diagnostics lose their words on laptop screens: their tooltips name them then.
+  // Reset, Method and Diagnostics lose their words on laptop screens: their tooltips name them then.
   const resetBtn = h("button", { class: "vc-button vc-button--outline", type: "button", id: "btn-reset", title: "Clear the workspace" }, icon("reset", 18), h("span", { class: "btn-text" }, "Reset"));
   resetBtn.addEventListener("click", () => handlers.onReset());
+  const methodBtn = h("button", { class: "vc-button vc-button--ghost", type: "button", id: "btn-method", title: "The rules, the definitions behind every figure and the parameters" }, icon("book", 18), h("span", { class: "btn-text" }, "Method"));
+  methodBtn.addEventListener("click", () => handlers.onMethod());
   const diagBtn = h("button", { class: "vc-button vc-button--ghost", type: "button", id: "btn-diagnostics", title: "Check the API, the data and the security policy from this browser" }, icon("pulse", 18), h("span", { class: "btn-text" }, "Diagnostics"));
   diagBtn.addEventListener("click", () => handlers.onDiagnostics());
 
@@ -74,6 +77,7 @@ export function createControls(root, scenarios, handlers) {
     pill,
     abortBtn,
     withTooltip(resetBtn, "Reset", { below: true }),
+    withTooltip(methodBtn, "Method", { below: true }),
     withTooltip(diagBtn, "Diagnostics", { below: true })
   );
 
@@ -82,7 +86,7 @@ export function createControls(root, scenarios, handlers) {
   let shownState = "idle";
   onAwaitedChange(() => { pill.querySelector(".text").textContent = runStateLabel(shownState); });
 
-  function update(s, { scenarioLabel } = {}) {
+  function update(s, { scenarioLabel, scenarioShort = scenarioLabel } = {}) {
     const running = isRunning(s);
     const finished = isFinished(s);
     const sim = s.mode === "simulation";
@@ -91,7 +95,10 @@ export function createControls(root, scenarios, handlers) {
     startBtn.lastChild.textContent = finished ? "New run" : "Start agent";
     setDisabled(startBtn, running, "A run is in progress. Abort it or wait until it finishes.");
 
-    scenarioDd.setValue(s.entry === "custom" ? "custom" : s.scenarioId, s.entry === "custom" ? `Custom: ${shorten(s.customText, 34)}` : scenarioLabel);
+    // On laptop widths the bar names the scenario by its number (the console's tip card and the menu give
+    // its title), so the bar keeps one row while the status reads "Awaiting your decision".
+    scenarioDd.setValue(s.entry === "custom" ? "custom" : s.scenarioId, s.entry === "custom" ? `Custom: ${shorten(s.customText, 34)}` : scenarioLabel,
+      s.entry === "custom" ? "Custom what-if" : scenarioShort);
     scenarioDd.setDisabled(running, "Locked while the agent runs.");
     scenarioDd.setItemDisabled("custom", sim && !finished, "Requires Live mode. Reset to switch modes.");
 
@@ -184,8 +191,10 @@ function dropdown({ id, caption, items, onSelect, width }) {
 
   return {
     el: wrap,
-    setValue(idVal, label) {
-      valueEl.textContent = label || "";
+    setValue(idVal, label, short = label) {
+      // Two forms of the value; the stylesheet shows the short one where the bar is narrow (the hidden
+      // one is not part of the button's name).
+      valueEl.replaceChildren(h("span", { class: "value-long" }, label || ""), h("span", { class: "value-short" }, short || label || ""));
       for (const [iid, el] of itemEls) el.setAttribute("aria-checked", String(iid === idVal));
     },
     setDisabled(disabled, reason) {

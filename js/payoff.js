@@ -1,8 +1,10 @@
 // What an approval changes on screen. In the demo nothing changes the data, so an approved fix path
 // shows the closure it would bring as "projected after re-scan", never as closed: only a re-scan that
 // no longer finds an exception closes it. The projections themselves come from the engine:
-//   - a mass correction (A, C) applies its suggestions to a copy of the world, scans the copy and
-//     reconciles it with the log, as a re-scan would (js/history.js project);
+//   - a mass correction (A, C) applies its suggestions to a copy of the world, scans the copy within
+//     the rules and filters of the scan that found the case, and reconciles it with the log, as that
+//     re-scan would (js/history.js project): only what the corrections close counts, not the entries a
+//     wider re-scan would close anyway;
 //   - an owner follow-up (B, D) changes no data the engine can know of; its projected closures,
 //     floor(n × c / e), are spread over the case's entries in proportion, so the projected rate is the
 //     expected one: the cohort's closed entries plus closures × (case entries in the cohort) / n.
@@ -25,15 +27,15 @@ export function changesOf(exceptions) {
 
 /**
  * The projected closure rate of a path. caseExceptions: the case's exceptions (with approved AI
- * suggestions merged in); closedB: B's projected closures. Returns a share, or null when the path
- * changes nothing.
+ * suggestions merged in); closed: B's and D's projected closures; rules and filters: the scope of the
+ * scan that found the case (null rules: every rule). Returns a share.
  */
-export function projectedRate(world, log, pathId, { caseExceptions, closed, day = 0, params }) {
+export function projectedRate(world, log, pathId, { caseExceptions, closed, day = 0, params, rules = null, filters = null }) {
   if (pathId === "nothing") return closureRate(log, day).value;
   if (pathId === "A" || pathId === "C") {
     const changes = changesOf(caseExceptions.filter((e) => e.suggestion)).filter((c) => LIST[c.product]);
     if (!changes.length) return closureRate(log, day).value;
-    return project(world, log, changes, { day, params }).closure_rate.value;
+    return project(world, log, changes, { day, params, rules, filters }).closure_rate.value;
   }
   // B and D: the expected rate if the projected closures fall on the case's entries in proportion.
   const base = closureRate(log, day);

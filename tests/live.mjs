@@ -24,6 +24,8 @@ import { readFile, writeFile } from "node:fs/promises";
 import { createFakeClaude } from "./lib/fake-claude.mjs";
 import { scriptTurns, loadData, TURN_USAGE } from "./lib/turns.mjs";
 import { APP_ROOT, outDir, ONLY, launchBrowser, serveStatic, CORS, MOCK_KEY, NETWORK_NOISE, SKIP_INTRO } from "./lib/harness.mjs";
+const { APP } = await import(path.join(APP_ROOT, "js/config.js"));
+const { pct1 } = await import(path.join(APP_ROOT, "js/format.js"));
 
 const CASES = ["key", "guards", "review", "caps", "sweep", "custom", "recorder"];
 const chosen = ONLY.length ? ONLY : CASES;
@@ -434,9 +436,11 @@ if (chosen.includes("recorder")) {
   const script = DATA.SIM_RUNS["SC-PUNCHOUT"];
   const decide = (o) => [{ options_seq: o.options_seq, option_id: "A", decision: "rejected" }, { options_seq: o.options_seq, option_id: "C", decision: "approved" }];
   const built = await scriptTurns(DATA, script, { decide });
+  // The projection the engine gives path C in Node: the tile must show the same.
+  const projectedC = `${pct1(built.options.options.find((o) => o.path === "C").figures.projected_closure_rate)} projected after re-scan`;
   const fake = createFakeClaude(built.turns);
   const t = await newPage(fake);
-  const c = {};
+  const c = { projectedC };
   let recording = null;
   try {
     const { page } = t;
@@ -454,7 +458,7 @@ if (chosen.includes("recorder")) {
     c.usage = doc.usage;
     c.costEur = doc.cost?.eur;
     c.expectedCost = built.turns.length * turnCost(TURN_USAGE);
-    c.versions = [doc.app_version, doc.rule_set_version, doc.engine_version, doc.world_version].every(Boolean) && doc.app_version === "0.2.0";
+    c.versions = [doc.app_version, doc.rule_set_version, doc.engine_version, doc.world_version].every(Boolean) && doc.app_version === APP.version;
     c.decisionLogged = doc.events.some((e) => e.type === "option_decision" && e.payload.option_id === "C" && e.payload.decision === "approved" && e.payload.by === "user");
     const rec = await download(page, () => page.click("#btn-save-sim"));
     c.recName = rec.name;
@@ -469,7 +473,7 @@ if (chosen.includes("recorder")) {
 
   // The recording replays offline in Simulation mode, through the same tools.
   const t2 = await newPage(null, { simRunsExtra: recording || "" });
-  const c2 = {};
+  const c2 = { projectedC };
   try {
     const { page } = t2;
     await open(page);
@@ -562,7 +566,7 @@ const EXPECT = {
   ],
   "recorder: live run, audit export, Save run as simulation": (c) => [
     [c.end === "done" && c.requests === c.turns, `the live run completes on its ${c.turns} turns (requests ${c.requests})`],
-    [c.kpi === "69.7% projected after re-scan", `the same projection as the engine's (got ${c.kpi})`],
+    [!!c.projectedC && c.kpi === c.projectedC, `the same projection as the engine's (got ${c.kpi}, the engine ${c.projectedC})`],
     [/model calls/.test(c.facts || "") && /€0\.\d\d/.test(c.facts || ""), `run facts with model calls and cost (got ${c.facts})`],
     [c.model === "claude-sonnet-5-5", `the export names the model (got ${c.model})`],
     [c.usage && c.usage.input_tokens === c.turns * TURN_USAGE.input_tokens && c.usage.output_tokens === c.turns * TURN_USAGE.output_tokens && c.usage.cache_read_input_tokens === c.turns * TURN_USAGE.cache_read_input_tokens, `the export sums the usage (got ${JSON.stringify(c.usage)})`],
@@ -575,7 +579,7 @@ const EXPECT = {
   "recorder: the recording replayed": (c) => [
     [/Replay of a live run recorded on .* \(Sonnet 5\.5\)/.test(c.tape || ""), `the tape names the recording (got ${c.tape})`],
     [c.end === "done" && c.report === 1, `the replay ends with its report (got ${c.end})`],
-    [c.kpi === "69.7% projected after re-scan", `figures recomputed by the engine (got ${c.kpi})`],
+    [!!c.projectedC && c.kpi === c.projectedC, `figures recomputed by the engine (got ${c.kpi}, the engine ${c.projectedC})`],
     [c.models === 0, "no model call, no key"]
   ]
 };

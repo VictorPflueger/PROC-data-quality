@@ -25,8 +25,8 @@ const SHORT = {
   "DQ-01": ["Contract ref", "missing"], "DQ-02": ["Material group", "missing"], "DQ-03": ["Group differs", "from master"],
   "DQ-04": ["Requester", "missing"], "DQ-05": ["Requester", "had left"], "DQ-06": ["Payment terms", "missing"],
   "DQ-07": ["Payment terms", "too short"], "DQ-08": ["Blocked", "supplier"], "DQ-09": ["Company code", "lacks terms"],
-  "DQ-10": ["VAT ID missing", "or malformed"], "DQ-11": ["Bank missing", "or foreign"], "DQ-12": ["Duplicate", "supplier"],
-  "DQ-13": ["Material lacks", "a group"], "DQ-14": ["Owner missing", "or left"], "DQ-15": ["Contract not", "valid that day"]
+  "DQ-10": ["VAT ID format", "or missing"], "DQ-11": ["Bank missing", "or foreign"], "DQ-12": ["Duplicate", "supplier"],
+  "DQ-13": ["Material lacks", "a group"], "DQ-14": ["Owner missing", "or left"], "DQ-15": ["Contract", "not valid"]
 };
 const STATE_ICON = { danger: "error", warning: "warning", success: "success" };
 const STATE_WORD = { danger: "open, high severity", warning: "open", success: "nothing open", neutral: "not scanned yet" };
@@ -237,7 +237,7 @@ export function createBoard(root, { world = window.WORLD } = {}) {
         h("td", { class: "num" }, int(list.length)),
         h("td", { class: "people-pips" }, [...rules].sort((a, b) => a[0].localeCompare(b[0])).map(([rule, xs]) => pips(rule, xs))),
         h("td", { class: "num" }, waiting ? h("span", { class: "vc-tag vc-tag--accent" }, int(waiting)) : approvedDrafts ? h("span", { class: "people-done" }, `${int(approvedDrafts)} approved`) : "—"),
-        h("td", { class: "people-path" }, covered ? h("span", { class: "vc-tag vc-tag--success" }, `Path ${approved.path}: approved, re-scan pending (${int(covered)})`) : approved?.path === "nothing" && list.some((e) => caseIds.has(e.id)) ? "risk accepted" : "—")));
+        h("td", { class: "people-path" }, covered ? h("span", { class: "vc-tag vc-tag--accent" }, `Path ${approved.path}: approved, re-scan pending (${int(covered)})`) : approved?.path === "nothing" && list.some((e) => caseIds.has(e.id)) ? "risk accepted" : "—")));
     }
   }
 
@@ -286,28 +286,35 @@ export function createBoard(root, { world = window.WORLD } = {}) {
       return;
     }
     for (const e of d.exceptions) {
-      const covered = approved && approved.ids.has(e.id);
-      const aiNote = (e.lines || []).map((l) => ai.get(l)).find(Boolean);
-      const status = covered ? "approved, re-scan pending" : STATUS_WORD[e.status] || e.status || "open";
+      const { covered, aiNote, status } = shown(e);
       exBody.appendChild(h("tr", { dataset: { exception: e.id, record: e.record, case: String(caseIds.has(e.id)), focus: String(focus.records.has(e.record)) } },
-        h("th", { scope: "row", class: "ex-record" }, e.record),
+        // An order line's record breaks after its order number on a narrow board ("4500101079/" "20").
+        h("th", { scope: "row", class: "ex-record" }, ...String(e.record).split(/(?<=\/)/).flatMap((part, i) => (i ? [h("wbr"), part] : [part]))),
         h("td", { class: "ex-who", title: personLabel(world, e.responsible) }, personCell(e.responsible)),
         h("td", { class: "ex-who", title: personLabel(world, e.routed_to) }, personCell(e.routed_to)),
         h("td", { class: "num" }, euro(e.spend_eur)),
         h("td", { class: "num" }, ruleById(e.rule).financing ? euro(e.financing_cost_eur) : "—"),
         h("td", {}, e.unpaid === true ? "yes" : e.unpaid === false ? "no" : "—"),
         h("td", { class: "ex-suggestion" }, suggestionText(e, aiNote)),
-        h("td", { class: "ex-status" }, h("span", { class: ["vc-tag", covered ? "vc-tag--success" : ""] }, status), caseIds.has(e.id) ? h("span", { class: "vc-tag ex-case" }, "in the case") : null)));
+        // An approved fix is the person's decision (merlot's tint); the exception stays open until a re-scan.
+        h("td", { class: "ex-status" }, h("span", { class: ["vc-tag", covered ? "vc-tag--accent" : ""] }, status), caseIds.has(e.id) ? h("span", { class: "vc-tag ex-case" }, "in the case") : null)));
     }
   }
 
+  // An exception as its table row shows it: covered by an approved fix path ("approved, re-scan
+  // pending"), its AI suggestion if any, its status and its suggestion in words.
+  function shown(e) {
+    const covered = !!approved && approved.ids.has(e.id);
+    const aiNote = (e.lines || []).map((l) => ai.get(l)).find(Boolean) || null;
+    const status = covered ? "approved, re-scan pending" : STATUS_WORD[e.status] || e.status || "open";
+    const suggestion = e.suggestion ? `${e.suggestion.field}: ${e.suggestion.value} (${e.suggestion.source})`
+      : aiNote ? `AI: ${aiNote.group_code}, ${aiNote.status === "approved" ? "approved" : aiNote.status === "rejected" ? "rejected" : "waits for review"}` : "none";
+    return { covered, aiNote, status, suggestion };
+  }
+
   function suggestionText(e, aiNote) {
-    if (e.suggestion) return `${e.suggestion.field}: ${e.suggestion.value} (${e.suggestion.source})`;
-    if (aiNote) {
-      const word = aiNote.status === "approved" ? "approved" : aiNote.status === "rejected" ? "rejected" : "waits for review";
-      return h("span", { class: "vc-tag vc-tag--feature ex-ai" }, `AI: ${aiNote.group_code}, ${word}`);
-    }
-    return "none";
+    const { suggestion } = shown(e);
+    return !e.suggestion && aiNote ? h("span", { class: "vc-tag vc-tag--feature ex-ai" }, suggestion) : suggestion;
   }
 
   // ---- what the agent reads pulses in fjord ---------------------------------------------------------
@@ -348,7 +355,7 @@ export function createBoard(root, { world = window.WORLD } = {}) {
       const fresh = new Map(p.scan.rules.map((r) => [r, []]));
       for (const e of p.scan.exceptions) fresh.get(e.rule)?.push(e);
       for (const [rule, list] of fresh) byRule.set(rule, { exceptions: list, scanId: p.scan.id, scope });
-      scopeEl.textContent = `Last scan ${p.scan.id}: ${scope}. ${int(p.scan.exceptions.length)} open ${p.scan.exceptions.length === 1 ? "exception" : "exceptions"}.`;
+      scopeEl.textContent = scopeLine(p.scan.id, scope, p.scan.exceptions.length);
     }
     if (p.ai) for (const a of p.ai) ai.set(a.line_id, { group_code: a.group_code, status: a.status });
     if (p.focus) {
@@ -362,6 +369,12 @@ export function createBoard(root, { world = window.WORLD } = {}) {
     if (p.view === "rules" || p.view === "people") setView(p.view);
     refresh();
   });
+
+  // The board counts the last scan's scope; the header tiles count the whole exception log, so the
+  // line says which is which (review finding R11: "40 open" here, "151" on the tile).
+  function scopeLine(id, scope, n) {
+    return `Last scan ${id}: ${scope}. ${int(n)} open ${n === 1 ? "exception" : "exceptions"} in this scope; the header tiles count the whole exception log.`;
+  }
 
   function scopeText(scan, ev) {
     const n = scan.rules.length;
@@ -381,7 +394,7 @@ export function createBoard(root, { world = window.WORLD } = {}) {
     for (const x of d) x.scope = scopeText({ id: p.result.scan_id, rules: Array.isArray(p.result.rules) ? p.result.rules : RULES.map((r) => r.id) });
     if (d.length) {
       lastScope = d[0].scope;
-      scopeEl.textContent = `Last scan ${p.result.scan_id}: ${lastScope}. ${int(p.result.exceptions)} open ${p.result.exceptions === 1 ? "exception" : "exceptions"}.`;
+      scopeEl.textContent = scopeLine(p.result.scan_id, lastScope, p.result.exceptions);
       refresh();
     }
   });
@@ -500,8 +513,30 @@ export function createBoard(root, { world = window.WORLD } = {}) {
     sub.textContent = text;
   }
 
+  /**
+   * What the board's rule tables hold, one row per exception in the order of the rules: the latest
+   * scan of each rule, with the status, the suggestion and the case mark the table shows (the
+   * exceptions export is built from this, so the file and the screen cannot differ).
+   */
+  function snapshot() {
+    const rows = [];
+    for (const r of RULES) {
+      const d = byRule.get(r.id);
+      if (!d) continue;
+      for (const e of d.exceptions) {
+        const v = shown(e);
+        rows.push({
+          ...e, rule_name: r.name, dimension: r.dimension, record_type: r.record, scan_id: d.scanId, scope: d.scope,
+          responsible_label: personLabel(world, e.responsible), routed_to_label: personLabel(world, e.routed_to),
+          financing: r.financing, status_shown: v.status, suggestion_shown: v.suggestion, in_case: caseIds.has(e.id)
+        });
+      }
+    }
+    return rows;
+  }
+
   refresh();
-  return { showCohorts, setAsOf, reset, setView, el: root };
+  return { showCohorts, setAsOf, reset, setView, snapshot, el: root };
 }
 
 function niceStep(max) {

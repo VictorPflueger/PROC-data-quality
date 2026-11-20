@@ -11,6 +11,7 @@ import { createHumanQueue, HUMAN_EVENTS } from "./human.js";
 import { runScript } from "./sim_script.js";
 import { appToday } from "./clock.js";
 import { createPhaseGate } from "./phase.js";
+import { PARAMS } from "./params.js";
 
 const ABORT = Symbol("abort");
 
@@ -33,8 +34,9 @@ export function createSimulationPlayer({ getSpeed }) {
     };
     const gate = createPhaseGate((state) => { if (!run.ended) bus.emit("state_change", { state }); });
     const setPhase = (state) => gate.set(state);
+    // Simulation runs on the method's default parameters, so every scripted run stays valid.
     const toolbox = createToolbox({
-      world: window.WORLD, mode: "simulation", today: appToday(),
+      world: window.WORLD, mode: "simulation", today: appToday(), params: PARAMS,
       emit: (type, payload) => { if (!run.ended) bus.emit(type, payload); },
       onPhase: setPhase,
       waitFor: (kind, test) => human.waitFor(kind, test)

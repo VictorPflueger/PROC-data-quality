@@ -46,7 +46,13 @@ export const COLOUR_PAIRS = [
   ["The production path's names", "text", "surface-raised", "text"],
   ["The production path's roles", "text-muted", "surface-raised", "text"],
   // The header's fiction note: a plain tag.
-  ["Fictional company, no client data (a plain tag)", "neutral-text", "neutral-bg", "text"]
+  ["Fictional company, no client data (a plain tag)", "neutral-text", "neutral-bg", "text"],
+  // The Method dialog: the parameters' units beside their fields, a changed parameter's tag, and the
+  // answer to Apply, on the dialog's raised surface.
+  ["A parameter's unit beside its field", "text-muted", "bg-subtle", "text"],
+  ["A changed parameter (a plain tag)", "neutral-text", "neutral-bg", "text"],
+  ["Parameters applied and logged", "success-text", "surface-raised", "text"],
+  ["Parameters refused, with their bounds", "danger-text", "surface-raised", "text"]
 ];
 
 /**
@@ -60,9 +66,10 @@ export const SEPARATIONS = [
 
 /**
  * The hexagon test's tour of the app (tests/hexagon.mjs): the intro, the idle board, Diagnostics, the
- * scenario menu, the drawer's three tabs, and the main states of a Simulation run of scenario 3 (the
- * review of AI-suggested values, the case card, the honeycomb with states, a cell's exceptions, the
- * people view, the fix paths, the outbox and the report). The page has just been opened, without
+ * Method dialog with a changed parameter, the scenario menu, the drawer's three tabs, and the main
+ * states of a Simulation run of scenario 3 (the review of AI-suggested values, the case card, the
+ * honeycomb with states, a cell's exceptions, the people view, the fix paths, the outbox, the report
+ * and the Audit tab with its exports). The page has just been opened, without
  * SKIP_INTRO, so the intro opens by itself. visit(name, { settle }) checks the page as it is, settle
  * ms (250) after the step.
  */
@@ -81,6 +88,16 @@ export async function hexagonTour(page, visit) {
   await visit("diagnostics");
   await page.keyboard.press("Escape");
   await page.waitForSelector(".diag-table", { state: "detached", timeout: 5000 });
+  // The Method dialog with a parameter changed (its tag, the log, the status line) and back.
+  await page.click("#btn-method");
+  await page.waitForSelector(".method-modal[open]", { timeout: 5000 });
+  await page.fill("#param-cost_of_capital", "7");
+  await page.click("#btn-params-apply");
+  await page.locator("#method-params").scrollIntoViewIfNeeded();
+  await visit("method dialog with a changed parameter");
+  await page.click("#btn-params-reset");
+  await page.keyboard.press("Escape");
+  await page.waitForSelector(".method-modal", { state: "detached", timeout: 5000 });
   await page.click("#dd-scenario");
   await page.waitForSelector(".dropdown-menu:not([hidden])", { timeout: 5000 });
   await visit("scenario menu");
@@ -131,6 +148,9 @@ export async function hexagonTour(page, visit) {
   await page.waitForSelector(".report-modal", { timeout: 5000 });
   await visit("the report");
   await page.keyboard.press("Escape");
+  // The Audit tab with its three exports.
+  await page.click("#tab-audit");
+  await visit("audit with its exports");
 }
 
 /**

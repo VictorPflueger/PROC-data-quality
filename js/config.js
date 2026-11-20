@@ -5,7 +5,7 @@ export const APP = {
   name: "Data Quality Agent",
   fullName: "Procurement Data Quality Agent",
   subtitle: "Procurement data quality",
-  version: "0.2.0"
+  version: "1.0.0"
 };
 
 export const ANTHROPIC = {
@@ -76,7 +76,8 @@ export const STORAGE = {
   speed: `${P}speed`,                   // sessionStorage
   sessionCost: `${P}sessionCostEur`,    // sessionStorage: live spend in this tab
   introSeen: `${P}introSeen`,           // localStorage: the intro opens by itself only on a first visit
-  consoleText: `${P}consoleText`        // localStorage: larger console text for projectors
+  consoleText: `${P}consoleText`,       // localStorage: larger console text for projectors
+  params: `${P}params`                  // sessionStorage: the method's parameters changed in the Method dialog (Live runs)
 };
 
 export const UI = {

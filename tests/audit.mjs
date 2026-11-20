@@ -1,4 +1,5 @@
-// Figure audit (build plan, section 4.6; AC-04): the golden cases F01 to F15 and adversarial texts.
+// Figure audit (build plan, section 4.6; AC-04): the golden cases F01 to F15, adversarial texts, and
+// dates and weekly cohorts read as the app writes them (review finding R9).
 // The run's known figures are the expected values of D1 to D3 and the method's parameters (what
 // erp_get_overview returns); the known ids are the fixture world's. Each text must pass or fail as
 // expected, naming exactly the expected offending tokens.
@@ -6,7 +7,8 @@
 import { readFileSync } from "node:fs";
 import path from "node:path";
 import { APP_ROOT } from "./lib/harness.mjs";
-import { KnownFigures, auditText, extractFigures } from "../js/figures.js";
+import { KnownFigures, auditText, extractFigures, addDates } from "../js/figures.js";
+import { dayLabel, isoDay } from "../js/format.js";
 import { PARAMS, PARAM_TYPES } from "../js/params.js";
 import { RULES } from "../js/rules.js";
 
@@ -116,6 +118,52 @@ const gbp = new KnownFigures();
 gbp.amount(1500, "GBP");
 expect("C01", "The order was for £1,500.", true, [], gbp);
 expect("C02", "The order was for €1,500.", false, ["€1,500"], gbp);
+// Dates and weeks (review finding R9). The audit reads every date the app writes as the day it names:
+// each day label of a year and a half around a day in September and one in November ("Tue 15 Sept",
+// "Fri 21 Nov 2025") passes with its own day number known and fails with only the next day known.
+const dateRuns = [new Date(2026, 8, 15), new Date(2026, 10, 20)];
+for (const today of dateRuns) {
+  let roundTrips = 0;
+  const misses = [];
+  for (let n = -400; n <= 120; n++) {
+    const label = dayLabel(n, today);
+    const own = auditText(`It happened on ${label}.`, new KnownFigures().dayNumber(n), { today });
+    const next = auditText(`It happened on ${label}.`, new KnownFigures().dayNumber(n + 1), { today });
+    const iso = auditText(`It happened on ${isoDay(n, today)}.`, new KnownFigures().dayNumber(n), { today });
+    if (own.ok && iso.ok && !next.ok && next.offending[0]?.reason === "a date no tool returned") roundTrips += 1;
+    else if (misses.length < 3) misses.push(`${label}: own ${own.ok}, iso ${iso.ok}, next ${next.ok}`);
+  }
+  checks += 1;
+  if (roundTrips !== 521) failures.push(`D00 day labels around ${isoDay(0, today)}: ${roundTrips}/521 read back as their own day (${misses.join("; ")})`);
+}
+const sept = new Date(2026, 8, 15); // Tue 15 Sept 2026
+const dated = addDates(new KnownFigures(), {
+  as_of: { day: 0, date: dayLabel(0, sept) },
+  rows: [{ id: "L1", day: -3, payment_terms_days: 30 }],
+  record: { id: "K1", valid_from: -400, valid_to: -12 },
+  cohorts: [{ week: 1, from: -20, to: -14 }, { week: 8, from: -69, to: -63 }]
+}).day(30); // the payment term is a duration (a days figure), not a date
+const D = [
+  ["D01", "As of Tue 15 Sept the case is open.", true, []],
+  ["D02", "As of Tuesday, 15 September 2026 the case is open; September 15, 2026 too, and 2026-09-15.", true, []],
+  ["D03", "As of Tue 15 Sep the case is open.", true, []],
+  ["D04", "As of Wed 15 Sept the case is open.", false, ["Wed 15 Sept"]],
+  ["D05", "As of Wed 16 Sept the case is open.", false, ["Wed 16 Sept"]],
+  ["D06", "The order was placed on Sat 12 Sept and the contract ran out on Thu 3 Sept.", true, []],
+  ["D07", "The contract ran out on Fri 4 Sept.", false, ["Fri 4 Sept"]],
+  ["D08", "Week 8 started on Wed 8 Jul; week 1 ended on 1 Sept.", true, []],
+  ["D09", "Week 9 started on Wed 1 Jul.", false, ["Week 9", "Wed 1 Jul"]],
+  ["D10", "Weeks 1 to 8 are complete; in week 1, 30 days is the payment term.", true, []],
+  ["D11", "The contract started in August 2025 and ran out in September 2026.", true, []],
+  ["D12", "The contract started in June 2025.", false, ["June 2025"]],
+  ["D13", "The window ends on Thu 31 Sept.", false, ["Thu 31 Sept"]],
+  ["D14", "Owners may 30 days later; the sun is not a date.", true, []]
+];
+for (const [id, text, pass, offending] of D) expect(id, text, pass, offending, dated, { today: sept });
+// Without a run's days (no day known), any real date passes, but "Week N" must still be a cohort.
+expect("D15", "Week 8 started on Sat 12 Sept.", false, ["Week 8"], new KnownFigures(), { today: sept });
+expect("D16", "It started on Sat 12 Sept 2026.", true, [], new KnownFigures(), { today: sept });
+
 // What the reader extracts, with its type.
 const types = extractFigures("€58.7k, 6.4%, 14 days, 18 exceptions, 4500000101/10, plant 1010").map((f) => `${f.type}:${f.raw}`);
 checks += 1;

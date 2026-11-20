@@ -46,6 +46,10 @@ const KINDS = {
   report: () => ({
     heading: "AI-written summary",
     lines: [author(), CHECKED, "The audit export holds every model call, tool result and decision."]
+  }),
+  console: () => ({
+    heading: "The agent's console",
+    lines: [author(), "The agent writes the narration, its hypothesis and revision, and the reasoning summaries in this console. The plain sentence above each tool call is written by code, and the figures in the tool results come from the deterministic rule engine.", "The agent is told to keep figures out of its narration; the texts that quote figures (the case, the fix paths, the drafts and the report) are checked in code against the engine's."]
   })
 };
 
@@ -59,7 +63,7 @@ for (const type of ["wheel", "touchmove"]) document.addEventListener(type, close
 
 let counter = 0;
 
-/** An AI label for `kind` ("alert" | "review" | "options" | "draft" | "report"). The explanation reflects the current run. */
+/** An AI label for `kind` ("alert" | "review" | "options" | "draft" | "report" | "console"). The explanation reflects the current run. */
 export function aiLabel(kind) {
   const id = `ai-tip-${++counter}`;
   const button = h("button", {
