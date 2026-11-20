@@ -95,7 +95,7 @@ export function recordFigures(product, row, world) {
 
 // ---- erp_get_overview -------------------------------------------------------------------------------
 
-export function erpOverview(world, { day = 0, today = new Date() } = {}) {
+export function erpOverview(world, { day = 0, today = new Date(), params = PARAMS } = {}) {
   const ix = indexOf(world);
   const rows = (p) => (world[LIST[p]] || []).length;
   const owner = (role) => (world.users || []).find((u) => u.role === role)?.id || null;
@@ -115,7 +115,7 @@ export function erpOverview(world, { day = 0, today = new Date() } = {}) {
     central_roles: Object.fromEntries(Object.values(CENTRAL_ROLES).map((r) => [r, owner(r)])),
     rules: RULES.map((r) => ({ id: r.id, name: r.name, dimension: r.dimension, severity: r.severity, record: r.record, fires: r.fires, responsible: r.responsible, suggestion: r.suggestion || "none" })),
     material_groups: [...ix.taxonomy.values()].map((t) => ({ code: t.code, name: t.name })),
-    parameters: Object.entries(PARAMS).map(([k, v]) => ({ name: k, value: v, unit: PARAM_LABELS[k][1], label: PARAM_LABELS[k][0], assumption: true })),
+    parameters: Object.entries(params).map(([k, v]) => ({ name: k, value: v, unit: PARAM_LABELS[k][1], label: PARAM_LABELS[k][0], assumption: true, ...(v !== PARAMS[k] ? { default: PARAMS[k] } : {}) })),
     group_keys: GROUP_KEYS.slice(),
     notes: [
       "Accuracy is left out: whether a value matches reality needs an outside check this prototype cannot make.",
@@ -124,7 +124,7 @@ export function erpOverview(world, { day = 0, today = new Date() } = {}) {
     ],
     figures: [
       ...DATA_PRODUCTS.map((p) => ({ type: "count", value: rows(p) })),
-      ...Object.entries(PARAMS).map(([k, v]) => ({ type: PARAM_TYPES[k], value: v }))
+      ...Object.entries(params).map(([k, v]) => ({ type: PARAM_TYPES[k], value: v }))
     ]
   };
 }

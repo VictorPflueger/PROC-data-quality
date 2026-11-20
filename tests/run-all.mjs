@@ -17,12 +17,15 @@ const SUITES = [
   { id: "vat", what: "VAT format rule: one passing and one failing example per country, never a check digit", file: "tests/vat.mjs", browser: false },
   { id: "policy", what: "security policy, no outside resources, no inline script or style, storage keys", file: "tests/policy.mjs", browser: false },
   { id: "hygiene", what: "no client, contact or meeting named in any published file", file: "tests/hygiene.mjs", browser: false },
+  { id: "docs", what: "the documents complete, their cited sections and named paths real, the live site linked", file: "tests/docs.mjs", browser: false },
   { id: "parity", what: "shared shell identical to the sister app's, two modules adapted (needs a Rebate Hunter checkout)", file: "tests/parity.mjs", browser: false, optional: true },
   { id: "smoke", what: "the page boots in both themes and two sizes, tiles equal the engine, Diagnostics passes", file: "tests/smoke.mjs", browser: true },
   { id: "sims", what: "the six scenarios in Simulation along three decision paths, offline, with the engine's figures", file: "tests/sims.mjs", browser: true },
   { id: "live", what: "the live agent against the scripted API stand-in: key, guardrails, review, caps, sweep, custom, recorder", file: "tests/live.mjs", browser: true },
-  { id: "accept", what: "the board equals the engine; nothing reads closed before a re-scan; honesty labels", file: "tests/accept.mjs", browser: true },
-  { id: "hexagon", what: "nothing round: the app's files, and the rendered app in both themes through a run", file: "tests/hexagon.mjs", browser: true }
+  { id: "accept", what: "the board equals the engine; honesty; exports; the Method dialog; keyboard, motion and names", file: "tests/accept.mjs", browser: true },
+  { id: "hexagon", what: "nothing round: the app's files, and the rendered app in both themes through a run", file: "tests/hexagon.mjs", browser: true },
+  { id: "layout", what: "1920×1080 to 1280×720 in both themes: no overflow, nothing cut, targets of 40 px", file: "tests/layout.mjs", browser: true },
+  { id: "design", what: "the colour grammar on the tokens, merlot for your turn, AI labels; review captures", file: "tests/design.mjs", browser: true }
 ];
 
 const only = process.argv.slice(2);

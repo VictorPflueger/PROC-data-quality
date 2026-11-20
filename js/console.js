@@ -47,7 +47,8 @@ export function createConsole(panel, { onOpenOptions, onOpenOutbox, onOpenReport
 
   panel.append(
     h("div", { class: "console-head" },
-      h("div", { class: "console-title" }, h("h2", {}, "Agent console"), count),
+      // The narration and the reasoning summaries are the agent's words: one AI label for the console.
+      h("div", { class: "console-title" }, h("h2", {}, "Agent console"), aiLabel("console"), count),
       h("div", { class: "console-head-actions" }, jumpBtn, sizeBtn)),
     rail.el,
     watermark,
@@ -243,7 +244,9 @@ export function createConsole(panel, { onOpenOptions, onOpenOutbox, onOpenReport
         h("dt", {}, "Routed to"), h("dd", {}, routing.map((r) => `${r.label} (${int(r.count)})`).join("; ") + ((p.routing || []).length > routing.length ? `; ${int(p.routing.length - routing.length)} more` : ""))),
       Array.isArray(p.checked) && p.checked.length ? h("p", { class: "alert-evidence" }, h("strong", {}, "Checked in this run: "), p.checked.join("; "), ".") : null,
       h("div", { class: "case-ai" }, aiLabel("alert"))));
-    add(entry("alert", ev.t, "alert", card));
+    // The mark follows the board's grammar (review finding R14): a cross in danger for a high-severity
+    // case, the warning mark for a medium or low one.
+    add(entry("alert", ev.t, sev === "medium" || sev === "low" ? "warning" : "error", card, { severity: sev }));
   });
 
   bus.on("confirmation_request", (ev) => {

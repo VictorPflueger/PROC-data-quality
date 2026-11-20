@@ -32,6 +32,8 @@ export function createOptionsPanel(panel, { onDecision, onCount } = {}) {
   }
 
   function render() {
+    // Focus that was in the panel stays in it through a rebuild (see the decision below).
+    if (panel.contains(document.activeElement) && document.activeElement !== panel) refocus = true;
     clear(panel);
     if (!current) return empty();
     const c = current.case || {};
@@ -74,7 +76,8 @@ export function createOptionsPanel(panel, { onDecision, onCount } = {}) {
       h("p", { class: "option-kind" }, f.title || ""),
       o.description ? renderInline(o.description, h("p", { class: "option-desc" })) : null,
       h("dl", { class: "option-figures" },
-        h("dt", {}, followUp ? "Exceptions closed (projected)" : "Exceptions closed"), h("dd", { dataset: { figure: "closed" } }, `${int(f.closed)} of ${int(c.n)}`),
+        // What a path closes is a projection for every path, until a re-scan no longer finds the exceptions.
+        h("dt", {}, "Closed after re-scan (projected)"), h("dd", { dataset: { figure: "closed" } }, `${int(f.closed)} of ${int(c.n)}`),
         h("dt", {}, "Spend covered"), h("dd", { dataset: { figure: "spend" } }, euro(f.spend_covered_eur)),
         h("dt", {}, "Financing cost avoided now"), h("dd", { dataset: { figure: "cost_now" } }, euro(f.avoided_now_eur)),
         h("dt", {}, "Exceptions prevented a year"), h("dd", { dataset: { figure: "prevented" } }, perYear(f.prevented_per_year)),
@@ -82,7 +85,7 @@ export function createOptionsPanel(panel, { onDecision, onCount } = {}) {
         h("dt", {}, "One-off effort"), h("dd", { dataset: { figure: "effort" } }, euro(f.effort_eur)),
         h("dt", {}, "Days"), h("dd", { dataset: { figure: "days" } }, days(f.days)),
         source ? h("dt", {}, "Prevents after") : null, source ? h("dd", { dataset: { figure: "prevents_after" } }, days(f.prevents_after_days)) : null),
-      followUp ? h("p", { class: "option-fig-note" }, "Closures projected from the case's 14-day closure history.") : null,
+      followUp ? h("p", { class: "option-fig-note" }, "Projected from the case's 14-day closure history.") : null,
       f.projected_closure_rate !== null && f.projected_closure_rate !== undefined
         ? h("div", { class: "option-total", title: "The closure rate a re-scan would measure after this fix: a what-if on a copy of the data, never a closure" }, h("span", { class: "label" }, "Projected closure rate"), h("span", { class: "value vc-tabular", dataset: { figure: "projected" } }, pct1(f.projected_closure_rate)))
         : null,
@@ -105,19 +108,23 @@ export function createOptionsPanel(panel, { onDecision, onCount } = {}) {
         h("h4", { class: "option-title" }, "Do nothing")),
       n.note ? renderInline(n.note, h("p", { class: "option-desc" })) : null,
       h("dl", { class: "option-figures" },
-        h("dt", {}, "Exceptions closed"), h("dd", {}, `0 of ${int(c.n)}`),
+        h("dt", {}, "Closed after re-scan"), h("dd", {}, `0 of ${int(c.n)}`),
         h("dt", {}, "Exceptions gained a year"), h("dd", { dataset: { figure: "gains" } }, `about ${perYear(f.gains_per_year)}`),
         h("dt", {}, "Their cost a year"), h("dd", { dataset: { figure: "gains_cost" } }, f.gains_cost_eur_per_year > 0 ? `about ${euro(f.gains_cost_eur_per_year)}` : euro(0)),
         h("dt", {}, "Financing cost, last 365 days"), h("dd", { dataset: { figure: "past" } }, euro(f.past_cost_eur)),
         h("dt", {}, "One-off effort"), h("dd", {}, euro(0))),
-      h("p", { class: "option-fig-note" }, "The past financing cost is spent: no fix path recovers it once the lines are paid."),
+      // The method's 12 × f × E / n (section 6.7): a year's new exceptions at the case's average cost,
+      // which can exceed the case's own past year when the inflow is larger than the case (review R17).
+      h("p", { class: "option-fig-note" }, "A year's new exceptions are costed at the case's average financing cost per exception. The past financing cost is spent: no fix path recovers it once the lines are paid."),
       st ? null : h("div", { class: "vc-field option-reason-field" }, h("label", { class: "vc-label", for: "nothing-reason" }, "Reason for accepting the risk"), input),
       actionsFor({ id: "nothing", title: "Do nothing" }, st, true));
   }
 
   function actionsFor(o, st, isNothing = false) {
-    if (st === "approved") return h("div", { class: "option-status" }, h("span", { class: "vc-tag vc-tag--success" }, icon("check", 20), isNothing ? "Risk accepted" : "Approved, re-scan pending"));
-    if (st === "rejected") return h("div", { class: "option-status" }, h("span", { class: "vc-tag vc-tag--danger" }, icon("x", 20), "Rejected"));
+    // A decision is the person's: merlot's tint, never a state colour of the data (an approved path
+    // closes nothing until a re-scan; a rejected one is no open exception).
+    if (st === "approved") return h("div", { class: "option-status" }, h("span", { class: "vc-tag vc-tag--accent" }, icon("check", 20), isNothing ? "Risk accepted" : "Approved, re-scan pending"));
+    if (st === "rejected") return h("div", { class: "option-status" }, h("span", { class: "vc-tag" }, icon("x", 20), "Rejected"));
     if (st === "not_selected") return h("div", { class: "option-status" }, h("span", { class: "vc-tag" }, "Not selected"));
     if (st === "expired") return h("div", { class: "option-status" }, h("span", { class: "vc-tag" }, "No decision: the run ended"));
     if (isNothing) {

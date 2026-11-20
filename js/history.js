@@ -144,9 +144,12 @@ const LISTS = { po_line: "po_lines", supplier: "suppliers", material: "materials
 /**
  * A what-if: the same scan and reconciliation on a copy of the world with the changes applied
  * ({ product, id, field, value }), reconciled with a copy of the log. Shown as "projected after
- * re-scan", never written back. Returns { scan, reconciliation, closure_rate, world }.
+ * re-scan", never written back. rules and filters give the re-scan its scope: a scan reconciles only
+ * the entries within the rules and filters it ran, so a projection within the scope of the scan that
+ * found the case counts only what the changes close, not what a wider re-scan would close anyway.
+ * Returns { scan, reconciliation, closure_rate, world }.
  */
-export function project(world, log, changes, { day = 0, params, rules = null } = {}) {
+export function project(world, log, changes, { day = 0, params, rules = null, filters = null } = {}) {
   const copy = JSON.parse(JSON.stringify(world));
   for (const ch of changes || []) {
     const list = copy[LISTS[ch.product]];
@@ -155,8 +158,8 @@ export function project(world, log, changes, { day = 0, params, rules = null } =
     if (!(ch.field in rec)) throw new Error(`projection: ${ch.product} ${ch.id} has no field ${ch.field}`);
     rec[ch.field] = ch.value;
   }
-  const s = scan(copy, { day, params, rules, log });
-  const reconciliation = reconcile(log, s.exceptions, { day, rules });
+  const s = scan(copy, { day, params, rules, filters, log });
+  const reconciliation = reconcile(log, s.exceptions, { day, rules, filters, c: s.context });
   return { scan: s, reconciliation, closure_rate: closureRate(reconciliation.log, day), world: copy };
 }
 

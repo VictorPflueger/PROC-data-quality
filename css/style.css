@@ -281,11 +281,9 @@ html { font-size: clamp(93.75%, 0.48vw + 50%, 112.5%); }
 /* ------------------------------------------------------------------------------------------ */
 
 /* "Fictional company, no client data" beside the AI disclosure: a plain tag (ink on the neutral
-   tint); on small laptops it keeps "Fictional company", and its title says the rest. */
+   tint), in full at every size from 1280 px wide (version 1.0.0: the shortened "Fictional company"
+   dropped the half that says no client data is used). */
 .fiction-note { white-space: nowrap; }
-@media (max-width: 1500px) {
-  .fiction-note .long { display: none; }
-}
 
 /* The production path in the intro window (decision D7): six steps in a row, each a hexagon. */
 .intro-modal .intro-value + h3 { margin-top: 20px; }
@@ -303,6 +301,54 @@ html { font-size: clamp(93.75%, 0.48vw + 50%, 112.5%); }
   .prod-path { grid-template-columns: repeat(3, minmax(0, 1fr)); }
 }
 
+/* Method sits beside Reset and Diagnostics and, like them, keeps its icon only on laptop widths. */
+@media (max-width: 1600px) {
+  #btn-method { --_px: 12px; }
+}
+/* The scenario picker names the scenario in full, and by its number where the bar is narrow. */
+.dropdown-toggle .value-short { display: none; }
+@media (max-width: 1400px) {
+  #dd-scenario .value-long { display: none; }
+  #dd-scenario .value-short { display: inline; }
+}
+
 /* Diagnostics: the parameters, read-only. */
 .params-table { max-width: 560px; }
 .params-table .num { text-align: right; font-variant-numeric: tabular-nums; white-space: nowrap; }
+.params-table .param-default { color: var(--vc-text-muted); font-size: var(--vc-font-size-sm); }
+
+/* Method: the rules, the definitions, the parameters (for Live runs) and the production path. */
+.method-modal .vc-dialog__body h3 { margin: 0 0 8px; font-family: var(--vc-font-display); font-weight: var(--vc-weight-semibold); font-size: 1.25rem; line-height: 1.2; letter-spacing: var(--vc-tracking-heading); color: var(--vc-text); }
+.method-section + .method-section { margin-top: 22px; }
+.method-section > p { margin: 0 0 10px; color: var(--vc-text-muted); max-width: var(--vc-container-prose); }
+.method-rules th, .method-rules td { vertical-align: top; }
+.method-rules thead th { white-space: nowrap; }
+.method-rule { min-width: 18rem; font-weight: var(--vc-weight-regular); }
+.method-rule-name { display: block; font-weight: var(--vc-weight-semibold); color: var(--vc-text); }
+.method-rule-id { font-variant-numeric: tabular-nums; }
+.method-rule-fires { display: block; margin-top: 2px; color: var(--vc-text-muted); font-size: var(--vc-font-size-sm); line-height: 1.4; }
+.method-rules .method-none { color: var(--vc-text-muted); }
+.method-defs { display: grid; grid-template-columns: minmax(10rem, 14rem) minmax(0, 1fr); gap: 10px 20px; margin: 0; }
+.method-defs dt { font-weight: var(--vc-weight-semibold); color: var(--vc-text); }
+.method-defs dd { margin: 0; color: var(--vc-text-muted); max-width: 72ch; }
+.method-params-wrap { max-width: 760px; }
+.method-params-table { width: 100%; }
+.method-modal h3[tabindex="-1"]:focus { outline: none; }
+.method-params-table th, .method-params-table td { vertical-align: middle; }
+.method-params-table .method-changed { margin-left: 8px; --_h: 22px; font-size: var(--fs-xs); }
+.method-param-field { max-width: 16rem; }
+.method-param-field .vc-input { min-width: 7rem; text-align: right; font-variant-numeric: tabular-nums; }
+.method-param-default { color: var(--vc-text-muted); white-space: nowrap; }
+.method-note { color: var(--vc-text-muted); }
+.method-param-actions { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; max-width: 760px; margin-top: 10px; }
+.method-param-actions .method-param-status { margin-right: auto; flex: 1 1 18rem; font-size: var(--vc-font-size-sm); }
+.method-lock { display: inline-flex; align-items: center; gap: 8px; }
+.method-log-title { margin: 16px 0 6px; font-size: var(--vc-font-size-md); font-weight: var(--vc-weight-semibold); color: var(--vc-text); }
+.method-param-log { margin: 0; padding: 0; list-style: none; max-width: 760px; max-height: 9rem; overflow: auto; color: var(--vc-text); font-size: var(--vc-font-size-sm); }
+.method-param-log li { padding: 3px 0; border-bottom: 1px solid var(--vc-border-subtle); }
+.method-param-log li::before { display: none; }
+.method-log-time { color: var(--vc-text-muted); }
+@media (max-width: 900px) {
+  .method-defs { grid-template-columns: 1fr; gap: 2px; }
+  .method-defs dd { margin-bottom: 8px; }
+}

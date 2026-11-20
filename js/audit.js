@@ -10,12 +10,23 @@ import { redactSecrets } from "./keystore.js";
 import { RULE_SET_VERSION } from "./rules.js";
 import { ENGINE_VERSION } from "./engine.js";
 import { computeRunFacts } from "./run_facts.js";
+import { paramChanges } from "./settings.js";
 
 const events = [];
 const apiExchanges = [];
 const rows = [];
 const listeners = new Set();
 let run = null;
+let runParams = null;   // the parameters the run used: { in_effect, changed }
+
+// Who acted, for each entry of the audit log: the agent (its texts, tool calls and model calls), the
+// rule engine (tool results, board and tile figures), the person at this browser (decisions) or the
+// app itself (the run's frame, notices, guardrails and costs).
+const ACTOR = {
+  narration: "agent", reasoning: "agent", tool_call: "agent", alert: "agent", options: "agent", action_draft: "agent", report: "agent", model_call: "agent",
+  tool_result: "engine", board_update: "engine", kpi_update: "engine",
+  confirmation_decision: "user", option_decision: "user", action_decision: "user"
+};
 
 bus.onAny((ev) => {
   // Streaming narration arrives as many partial updates; the audit keeps only final texts.
@@ -28,6 +39,7 @@ bus.onAny((ev) => {
       title: ev.payload.title, tip: ev.payload.tip || null, model: ev.payload.model || null, sim_source: ev.payload.sim_source || null,
       started_at: ev.ts, ended_at: null, status: "running"
     };
+    runParams = ev.payload.params ? { in_effect: { ...ev.payload.params }, changed: (ev.payload.params_changed || []).map((c) => ({ ...c })) } : null;
   }
   if (ev.type === "run_end" && run) {
     run.ended_at = ev.ts;
@@ -87,10 +99,37 @@ export function resetAudit() {
   apiExchanges.length = 0;
   rows.length = 0;
   run = null;
+  runParams = null;
+}
+
+/** One entry of the audit log (schema AuditEvent): who acted, when, on which versions, with what. */
+function auditEntry(row, i) {
+  const p = row.payload || {};
+  const user = ACTOR[row.type] === "user" && (p.by === undefined || p.by === "user");
+  const actor = user ? "user" : ACTOR[row.type] === "user" ? "system" : ACTOR[row.type] || "system";
+  const call = row.type === "model_call";
+  return {
+    seq: i + 1, ts: row.ts, type: row.type, run_id: row.run_id ?? run?.run_id ?? null, mode: row.mode ?? run?.mode ?? null, actor,
+    rule_set_version: RULE_SET_VERSION, engine_version: ENGINE_VERSION, payload: p,
+    model: call ? p.model || null : actor === "agent" && run?.mode === "live" ? run.model || null : null,
+    usage: call ? { input_tokens: p.input_tokens || 0, output_tokens: p.output_tokens || 0, cache_read_input_tokens: p.cache_read_tokens || 0, cache_creation_input_tokens: p.cache_write_tokens || 0 } : null,
+    cost_eur: call && typeof p.cost_eur === "number" ? p.cost_eur : null
+  };
+}
+
+/** The base of every export's file name: "data-quality-<run id>" with -SIMULATION or -LIVE. */
+export function runFileBase() {
+  const id = run?.run_id || `run-${Date.now()}`;
+  return `data-quality-${id}${run?.mode === "simulation" ? "-SIMULATION" : run?.mode === "live" ? "-LIVE" : ""}`;
 }
 
 /** The JSON export of the current run. */
 export function buildAuditExport() {
+  return redactSecrets(JSON.stringify(buildAuditDocument(), null, 2));
+}
+
+/** The export as an object (schema AuditExport in js/schemas.js). */
+export function buildAuditDocument() {
   const world = globalThis.WORLD?.meta || {};
   const lastCost = [...events].reverse().find((e) => e.type === "cost_update")?.payload || null;
   const mode = run?.mode || null;
@@ -124,19 +163,23 @@ export function buildAuditExport() {
     run,
     model: mode === "live" ? (run?.model || null) : null,
     usage: mode === "live" ? usage : null,
+    // The method's parameters this run used, and this tab's log of changes made in the Method dialog.
+    parameters: runParams ? { in_effect: runParams.in_effect, changed: runParams.changed, source: runParams.changed.length ? "method dialog" : "defaults" } : null,
+    parameter_changes: paramChanges(),
     run_facts: run && run.status !== "running" ? safeFacts() : null,
     cost: lastCost,
     counts: { ...countBy(events.map((e) => e.type)), model_calls: apiExchanges.length },
     events,
+    // The same run as the audit log: every event and model call with its actor, versions, model, usage and cost.
+    audit_log: rows.map(auditEntry),
     api_exchanges: apiExchanges
   };
-  return redactSecrets(JSON.stringify(doc, null, 2));
+  return JSON.parse(redactSecrets(JSON.stringify(doc)));
 }
 
 /** "data-quality-run-…-LIVE-audit.json" */
 export function auditFileName() {
-  const id = run?.run_id || `run-${Date.now()}`;
-  return `data-quality-${id}${run?.mode === "simulation" ? "-SIMULATION" : run?.mode === "live" ? "-LIVE" : ""}-audit.json`;
+  return `${runFileBase()}-audit.json`;
 }
 
 function safeFacts() {

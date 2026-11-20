@@ -10,14 +10,41 @@
 //   - percentages, counts and days match within half a unit of their last digit;
 //   - record, rule and exception ids, order and item numbers, codes after "plant", "company code",
 //     "supplier", "vendor" or "account", and dates are exempt from the number check but must exist;
+//   - a date must be a real one (with the right weekday, when it names one) and, in a run, a day some
+//     tool returned: the run's day, an order's day, a contract's validity, a log entry's days, a cohort's
+//     bounds. A month ("November 2025") must contain such a day, and "Week 3" must be a cohort the
+//     history tool returned;
 //   - counts written as words ("three owners") are allowed.
 
 const SCALE = { k: 1e3, thousand: 1e3, m: 1e6, mn: 1e6, million: 1e6, millions: 1e6, bn: 1e9, b: 1e9, billion: 1e9, billions: 1e9 };
 const CURRENCY = { "€": "EUR", eur: "EUR", euro: "EUR", euros: "EUR", "£": "GBP", gbp: "GBP", pound: "GBP", pounds: "GBP" };
 const MAX_RELATIVE = 0.02;
 const EPS = 1e-9;
-const MONTHS = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"];
-const WEEKDAYS = ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"];
+
+// Month and weekday names from the same Intl formatter the app writes dates with (js/format.js), so
+// the audit reads exactly what the screens and the tools show: en-GB writes "Sept", not "Sep". The
+// long names and the three-letter forms are read too, because a text may write "Friday 20 November"
+// (the form the system prompt gives today's date in) or "Sep".
+const intlNames = (options, n, dateOf) => {
+  const fmt = new Intl.DateTimeFormat("en-GB", { ...options, timeZone: "UTC" });
+  return Array.from({ length: n }, (_, i) => fmt.format(dateOf(i)));
+};
+const monthDate = (m) => new Date(Date.UTC(2026, m, 7));
+const weekdayDate = (d) => new Date(Date.UTC(2026, 10, 1 + d)); // 1 November 2026 is a Sunday
+const MONTHS_LONG = intlNames({ month: "long" }, 12, monthDate);
+const WEEKDAYS_LONG = intlNames({ weekday: "long" }, 7, weekdayDate);
+/** Name → month index (0 to 11): "Sept", "Sep", "September". */
+const MONTH_INDEX = new Map();
+intlNames({ month: "short" }, 12, monthDate).forEach((s, i) => MONTH_INDEX.set(s, i));
+MONTHS_LONG.forEach((s, i) => { MONTH_INDEX.set(s, i); MONTH_INDEX.set(s.slice(0, 3), i); });
+/** Name → weekday index (0 is Sunday): "Thu", "Thursday". */
+const WEEKDAY_INDEX = new Map();
+intlNames({ weekday: "short" }, 7, weekdayDate).forEach((s, i) => WEEKDAY_INDEX.set(s, i));
+WEEKDAYS_LONG.forEach((s, i) => { WEEKDAY_INDEX.set(s, i); WEEKDAY_INDEX.set(s.slice(0, 3), i); });
+const alternatives = (names) => [...names].sort((a, b) => b.length - a.length).join("|"); // longest first
+const MON = alternatives(MONTH_INDEX.keys());
+const WD = alternatives(WEEKDAY_INDEX.keys());
+const ORD = "(?:st|nd|rd|th)?";
 
 /** The figures one run's tools returned, by kind, and the ids that exist in the world or the run. */
 export class KnownFigures {
@@ -27,13 +54,21 @@ export class KnownFigures {
     this.counts = [];
     this.days = [];
     this.ids = new Set();
-    this.dayNumbers = new Set(); // calendar days (relative to today) that dates may name; empty: any valid date
+    // Calendar days (day numbers relative to today) that dates may name. The toolbox always adds the
+    // run's day, so in a run the set is never empty; an empty set (a check without a run, as in some
+    // unit tests) lets any real date pass.
+    this.dayNumbers = new Set();
+    this.weeks = new Set();      // the cohort numbers "Week N" may name
   }
   amount(value, currency = "EUR") { const v = Number(value); if (Number.isFinite(v)) this.amounts.push({ value: Math.abs(v), currency }); return this; }
   share(value) { const v = Number(value); if (Number.isFinite(v)) this.shares.push(v); return this; }
   count(value) { const v = Number(value); if (Number.isFinite(v)) this.counts.push(Math.abs(v)); return this; }
   day(value) { const v = Number(value); if (Number.isFinite(v)) this.days.push(Math.abs(v)); return this; }
   id(value) { if (value !== null && value !== undefined && value !== "") this.ids.add(String(value)); return this; }
+  /** A calendar day a date may name, as a day number relative to today (0 is today, −3 three days ago). */
+  dayNumber(value) { const v = Number(value); if (Number.isInteger(v)) this.dayNumbers.add(v); return this; }
+  /** A weekly cohort "Week N" may name. */
+  week(value) { const v = Number(value); if (Number.isInteger(v)) this.weeks.add(v); return this; }
   /** Adds a typed figure: type is "amount", "share", "count" or "days". */
   add(type, value, currency = "EUR") {
     if (type === "amount") return this.amount(value, currency);
@@ -47,8 +82,30 @@ export class KnownFigures {
     this.amounts.push(...other.amounts); this.shares.push(...other.shares); this.counts.push(...other.counts); this.days.push(...other.days);
     for (const x of other.ids) this.ids.add(x);
     for (const x of other.dayNumbers) this.dayNumbers.add(x);
+    for (const x of other.weeks) this.weeks.add(x);
     return this;
   }
+}
+
+// Keys whose integer values are day numbers relative to today in ERP and engine results: an order's
+// day, a contract's validity, a supplier's block and creation, a user's last day, a log entry's days,
+// a cohort's or a closure rate's bounds, the run's own day (as_of.day). Durations such as
+// payment_terms_days or days are not dates and are not here.
+const DATE_KEYS = new Set(["day", "valid_from", "valid_to", "block_from", "created_day", "active_until", "detected_day", "routed_day", "closed_day", "from", "to"]);
+
+/** Adds every day number a tool result names (see DATE_KEYS) and every cohort number to `known`. */
+export function addDates(known, result) {
+  const walk = (v, depth) => {
+    if (depth > 8 || v === null || typeof v !== "object") return;
+    if (Array.isArray(v)) { for (const x of v) walk(x, depth + 1); return; }
+    for (const [key, x] of Object.entries(v)) {
+      if (DATE_KEYS.has(key) && Number.isInteger(x)) known.dayNumber(x);
+      else if (key === "cohorts" && Array.isArray(x)) for (const c of x) if (c && Number.isInteger(c.week)) known.week(c.week);
+      walk(x, depth + 1);
+    }
+  };
+  walk(result, 0);
+  return known;
 }
 
 /** "58,725" → { value: 58725, decimals: 0 }; "6.38" → { value: 6.38, decimals: 2 }. */
@@ -68,8 +125,16 @@ const PATTERNS = [
   ["code", /\b(?:plants?|company codes?|suppliers?|vendors?|accounts?)\s+\d{4,6}(?:(?:\s*,\s*|\s+and\s+|\s+or\s+)\d{4,6})*\b/gi],
   ["id", /\b[LSMKUH]\d+\b/g],
   ["id", /\b\d+\.\d+\.\d+\b/g],
-  ["date", /\b\d{4}-\d{2}-\d{2}\b/g],
-  ["date", new RegExp(`\\b(?:${WEEKDAYS.join("|")}) \\d{1,2} (?:${MONTHS.join("|")})(?: \\d{4})?\\b`, "g")],
+  // Dates: ISO; day first ("Thu 19 Nov", "Mon 7 Sept 2026", "Friday, 20 November 2026", "20 Nov");
+  // month first ("November 20, 2026", "Fri, Nov 20"); a month with its year ("November 2025"). Names
+  // are case-sensitive, so "may" and "sun" in a sentence are words, not dates.
+  ["date-iso", /\b\d{4}-\d{2}-\d{2}\b/g],
+  ["date-dmy", new RegExp(`\\b(?:(${WD})\\.?,?\\s+)?(\\d{1,2})${ORD}\\s+(?:of\\s+)?(${MON})\\b\\.?(?:,?\\s+(\\d{4})\\b)?`, "g")],
+  ["date-mdy", new RegExp(`\\b(?:(${WD})\\.?,?\\s+)?(${MON})\\.?\\s+(\\d{1,2})${ORD}\\b(?:,?\\s+(\\d{4})\\b)?`, "g")],
+  ["month", new RegExp(`\\b(${MON})\\.?\\s+(\\d{4})\\b`, "g")],
+  // Weekly cohorts: "Week 3", "weeks 1 to 8", "weeks 3 and 4". No comma lists: in "in week 2, 14
+  // exceptions" the 14 is a count.
+  ["week", /\b[Ww]eeks?\s+\d{1,2}(?:(?:\s+(?:to|and|or)\s+|\s*[–-]\s*)\d{1,2})*\b/g],
   // Figures. Amounts with a currency before or after, an optional scale ("€58.7k", "€1.2 million").
   ["amount-pre", new RegExp(`(€|£|\\b(?:EUR|GBP)\\b)\\s?(${NUM})(?:\\s?(${SCALE_WORDS})(?![A-Za-z]))?`, "g")],
   ["amount-post", new RegExp(`(?<![\\d.,])(${NUM})(?:\\s?(${SCALE_WORDS})(?![A-Za-z]))?\\s?(€|\\bEUR\\b|\\bGBP\\b|[Ee]uros?\\b|[Pp]ounds?\\b)`, "g")],
@@ -83,7 +148,8 @@ const PATTERNS = [
 /**
  * Every figure and id written in a text, in order: [{ type, raw, index, ... }]. Types: amount (value,
  * decimals, scale, currency), share, days and count (value, decimals), id, code (the codes after their
- * word), date, ordinal. Earlier patterns win where two overlap.
+ * word), date (y or null, mo 0 to 11, d, wd 0 to 6 or null), month (y, mo), week (week), ordinal.
+ * Earlier patterns win where two overlap.
  */
 export function extractFigures(text) {
   const s = String(text || "");
@@ -123,26 +189,54 @@ export function extractFigures(text) {
         const word = /^[A-Za-z ]+?(?=\s+\d)/.exec(m[0])[0];
         const codes = [...m[0].matchAll(/\d{4,6}/g)];
         codes.forEach((c, i) => out.push({ type, raw: i === 0 ? `${word} ${c[0]}` : c[0], index: a + c.index, code: c[0], word: word.toLowerCase() }));
+      } else if (type === "date-iso") {
+        const [y, mo, d] = raw.split("-").map(Number);
+        out.push({ type: "date", raw, index: a, y, mo: mo - 1, d, wd: null });
+      } else if (type === "date-dmy" || type === "date-mdy") {
+        const dmy = type === "date-dmy";
+        const wd = m[1] ? WEEKDAY_INDEX.get(m[1]) : null;
+        out.push({ type: "date", raw: raw.replace(/[.,]+$/, ""), index: a, y: m[4] ? Number(m[4]) : null, mo: MONTH_INDEX.get(dmy ? m[3] : m[2]), d: Number(dmy ? m[2] : m[3]), wd });
+      } else if (type === "month") {
+        out.push({ type, raw, index: a, y: Number(m[2]), mo: MONTH_INDEX.get(m[1]) });
+      } else if (type === "week") {
+        // "Week 3", "weeks 1 to 8": every number is a cohort; the first carries the word.
+        const word = /^[Ww]eeks?/.exec(m[0])[0];
+        [...m[0].matchAll(/\d{1,2}/g)].forEach((n, i) => out.push({ type, raw: i === 0 ? `${word} ${n[0]}` : n[0], index: a + n.index, week: Number(n[0]) }));
       } else out.push({ type, raw, index: a });
     }
   }
   return out.sort((x, y) => x.index - y.index);
 }
 
-/** A display or ISO date as a Date (UTC midnight), or null when it is not a real date. */
-function parseDate(raw, today) {
-  let m = /^(\d{4})-(\d{2})-(\d{2})$/.exec(raw);
-  if (m) {
-    const d = new Date(Date.UTC(Number(m[1]), Number(m[2]) - 1, Number(m[3])));
-    return d.getUTCFullYear() === Number(m[1]) && d.getUTCMonth() === Number(m[2]) - 1 && d.getUTCDate() === Number(m[3]) ? d : null;
+const dayZero = (today) => Date.UTC(today.getFullYear(), today.getMonth(), today.getDate());
+
+/**
+ * The day numbers (relative to today) a written date can mean: one for a date with its year, and for
+ * a date without one each of this year, last year and next year that is real and has the weekday the
+ * text names (the app writes the year whenever it is not this year, but a text may leave it out for a
+ * day in last December). An empty list: not a real date.
+ */
+function dayNumbersOf(f, today) {
+  const years = f.y !== null ? [f.y] : [today.getFullYear(), today.getFullYear() - 1, today.getFullYear() + 1];
+  const out = [];
+  for (const y of years) {
+    if (!Number.isInteger(f.mo) || f.mo < 0 || f.mo > 11) continue;
+    const d = new Date(Date.UTC(y, f.mo, f.d));
+    if (d.getUTCFullYear() !== y || d.getUTCMonth() !== f.mo || d.getUTCDate() !== f.d) continue;
+    if (f.wd !== null && d.getUTCDay() !== f.wd) continue;
+    out.push(Math.round((d.getTime() - dayZero(today)) / 86400000));
   }
-  m = /^(\w{3}) (\d{1,2}) (\w{3})(?: (\d{4}))?$/.exec(raw);
-  if (!m) return null;
-  const year = m[4] ? Number(m[4]) : today.getFullYear();
-  const month = MONTHS.indexOf(m[3]);
-  const d = new Date(Date.UTC(year, month, Number(m[2])));
-  if (d.getUTCMonth() !== month || d.getUTCDate() !== Number(m[2])) return null;
-  return WEEKDAYS[d.getUTCDay()] === m[1] ? d : null;
+  return out;
+}
+
+/** True when a known day number falls in the written month. */
+function monthHasKnownDay(f, known, today) {
+  const base = dayZero(today);
+  for (const n of known.dayNumbers) {
+    const d = new Date(base + n * 86400000);
+    if (d.getUTCFullYear() === f.y && d.getUTCMonth() === f.mo) return true;
+  }
+  return false;
 }
 
 const within = (written, decimals, known, factor = 1) => Math.abs(written - known * factor) <= (10 ** -decimals) / 2 + EPS;
@@ -166,14 +260,17 @@ export function auditText(text, known, { wholeEuroFloor = false, today = new Dat
         if (!known.ids.has(f.code)) flag(f, `unknown ${f.word.replace(/s$/, "")}`);
         break;
       case "date": {
-        const d = parseDate(f.raw, today);
-        if (!d) flag(f, "not a real date");
-        else if (known.dayNumbers.size) {
-          const n = Math.round((d.getTime() - Date.UTC(today.getFullYear(), today.getMonth(), today.getDate())) / 86400000);
-          if (!known.dayNumbers.has(n)) flag(f, "a date no tool returned");
-        }
+        const ns = dayNumbersOf(f, today);
+        if (!ns.length) flag(f, "not a real date");
+        else if (known.dayNumbers.size && !ns.some((n) => known.dayNumbers.has(n))) flag(f, "a date no tool returned");
         break;
       }
+      case "month":
+        if (known.dayNumbers.size && !monthHasKnownDay(f, known, today)) flag(f, "a month no tool returned a day of");
+        break;
+      case "week":
+        if (!known.weeks.has(f.week)) flag(f, "a week no tool returned");
+        break;
       case "amount": {
         const half = (f.scale * 10 ** -f.decimals) / 2;
         const floor = wholeEuroFloor && f.scale === 1 && f.decimals === 0;

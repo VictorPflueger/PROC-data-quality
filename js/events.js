@@ -6,7 +6,9 @@
 //
 // Event types and payloads
 //   run_start        { run_id, mode: "live"|"simulation", entry: "scenario"|"sweep"|"custom", scenario_id?, title,
-//                      model?, model_label?, sim_source?: "authored"|"recorded", recorded_on?, recorded_model? }
+//                      model?, model_label?, sim_source?: "authored"|"recorded", recorded_on?, recorded_model?,
+//                      params: { name: value } (the method's parameters the run uses: Simulation the defaults),
+//                      params_changed: [{ name, label, value, default }] (changed in the Method dialog) }
 //   state_change     { state, note? }   states: see RUN_STATES
 //   narration        { msg_id, text, done }            streamed upsert: same msg_id replaces text
 //   reasoning        { msg_id, text, done }            summarised model thinking (shown collapsed)

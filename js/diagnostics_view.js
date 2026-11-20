@@ -1,6 +1,6 @@
 // Diagnostics dialog: the self-tests of js/diagnostics.js, the world's integrity checks, the method's
-// parameters (read-only here; edited in the Method dialog in Live mode) and the exchange rate with its
-// source and date.
+// parameters (read-only here: the values Live runs use, edited and logged in the Method dialog) and the
+// exchange rate with its source and date.
 
 import { h, clear } from "./dom.js";
 import { icon } from "./icons.js";
@@ -8,20 +8,16 @@ import { openModal } from "./modal.js";
 import { TESTS, runAll, runTest } from "./diagnostics.js";
 import { APP } from "./config.js";
 import { PARAMS, PARAM_LABELS } from "./params.js";
+import { liveParams } from "./settings.js";
+import { paramText } from "./method.js";
 import { RULE_SET_VERSION } from "./rules.js";
 import { ENGINE_VERSION } from "./engine.js";
-import { euro, pct1, int } from "./format.js";
+import { int } from "./format.js";
 
 const STATUS_TEXT = { pass: "Pass", fail: "Fail", warn: "Check", skip: "Skipped", running: "Testing", idle: "Not run" };
 const STATUS_ICON = { pass: "check", fail: "x", warn: "alert", skip: "info", idle: "info" };
 // Each status is a Vici tag in its tone, with its icon and its word; skipped and not run are plain.
 const STATUS_TAG = { pass: "vc-tag--success", fail: "vc-tag--danger", warn: "vc-tag--warning", running: "vc-tag--info", skip: "", idle: "" };
-
-function paramValue(key, v) {
-  if (key === "day_rate_eur") return euro(v);
-  if (key === "cost_of_capital") return `${pct1(v)} a year`;
-  return `${String(v)} ${PARAM_LABELS[key][1]}`;
-}
 
 export function openDiagnostics() {
   const rows = new Map();
@@ -57,9 +53,13 @@ export function openDiagnostics() {
     }
   }
 
-  const params = h("table", { class: "vc-table vc-table--compact params-table" },
-    h("caption", { class: "vc-visually-hidden" }, "The method's parameters, all assumptions"),
-    h("tbody", {}, Object.entries(PARAMS).map(([k, v]) => h("tr", {}, h("th", { scope: "row" }, PARAM_LABELS[k][0]), h("td", { class: "num" }, paramValue(k, v))))));
+  const live = liveParams();
+  const params = h("table", { class: "vc-table vc-table--compact params-table", id: "diag-params" },
+    h("caption", { class: "vc-visually-hidden" }, "The method's parameters for Live runs, all assumptions"),
+    h("tbody", {}, Object.entries(live).map(([k, v]) => h("tr", { dataset: { param: k, changed: String(v !== PARAMS[k]) } },
+      h("th", { scope: "row" }, PARAM_LABELS[k][0]),
+      h("td", { class: "num" }, paramText(k, v), v !== PARAMS[k] ? h("span", { class: "param-default" }, ` (default ${paramText(k, PARAMS[k])})`) : null)))));
+  const changedCount = Object.keys(live).filter((k) => live[k] !== PARAMS[k]).length;
   const meta = globalThis.WORLD?.meta || {};
   const fx = meta.fx_to_eur || {};
 
@@ -86,7 +86,7 @@ export function openDiagnostics() {
         worldList),
       h("div", { class: "diag-section diag-params" },
         h("h3", {}, "Parameters (assumptions, read-only here)"),
-        h("p", {}, "Edited only in the Method dialog in Live mode, where every change is logged; locked in Simulation so the scripted runs stay valid."),
+        h("p", {}, `The values Live runs use${changedCount ? `, ${changedCount} changed from the defaults` : ", all at their defaults"}. They are changed only in the Method dialog, where every change is logged; Simulation always runs on the defaults, so the scripted runs stay valid.`),
         params),
       h("div", { class: "diag-section" },
         h("h3", {}, "Exchange rate and versions"),

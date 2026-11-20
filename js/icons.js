@@ -11,7 +11,7 @@ const VICI = {
   play: "play", reset: "refresh", gear: "settings", globe: "globe-hex", check: "check", x: "close",
   alert: "warning", info: "info", user: "user", mail: "mail", download: "download", copy: "copy",
   chevronDown: "chevron-down", chevronUp: "chevron-up", chevronRight: "chevron-right", eye: "eye",
-  external: "external", spark: "sparkle", hub: "honeycomb", target: "honeycomb",
+  external: "external", spark: "sparkle", hub: "honeycomb", target: "honeycomb", book: "book", lock: "lock",
   // The states of a rule and its exceptions (the board, its legend): Vici's state icons.
   error: "error", warning: "warning", success: "success", clock: "clock"
 };

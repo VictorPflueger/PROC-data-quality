@@ -9,6 +9,7 @@ import { euroCents } from "./format.js";
 import { getKey, setKey, forgetKey, hasKey, looksLikeKey, maskKey } from "./keystore.js";
 import { checkKey } from "./anthropic.js";
 import { aiLabel } from "./ai_label.js";
+import { reportDocument, reportFileName } from "./exports.js";
 
 /**
  * Ask which mode to run in. Resolves "simulation" | "live" | "key" (change or forget the stored key) | null.
@@ -214,11 +215,8 @@ export function showReport(markdown, { mode, simSource = null } = {}) {
   copyBtn.addEventListener("click", async () => {
     status.textContent = (await copyText(markdown)) ? "Copied to the clipboard." : "Copy failed; use Download instead.";
   });
-  const dlBtn = h("button", { class: "vc-button", type: "button" }, icon("download", 18), "Download .md");
-  dlBtn.addEventListener("click", () => {
-    const banner = simSource === "recorded" ? "> SIMULATION — replay of a recorded live run, not a live analysis." : "> SIMULATION — scripted replay, not a live analysis.";
-    downloadText(`data-quality-report${mode === "simulation" ? "-SIMULATION" : ""}.md`, mode === "simulation" ? `${banner}\n\n${markdown}` : markdown, "text/markdown");
-  });
+  const dlBtn = h("button", { class: "vc-button", type: "button", id: "btn-report-download" }, icon("download", 18), "Download .md");
+  dlBtn.addEventListener("click", () => downloadText(reportFileName(), reportDocument(markdown, { mode, simSource }), "text/markdown"));
   return openModal({
     title: "Report",
     className: "report-modal",

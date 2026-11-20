@@ -26,7 +26,7 @@ import { RULES, RULE_IDS, ruleById, RULE_SET_VERSION } from "./rules.js";
 import { PARAMS } from "./params.js";
 import { ERP_TOOLS, DATA_PRODUCTS, FILTER_OPS, MAX_ROWS, personLabel, worldIds, indexOf, valueEur } from "./erp.js";
 import { validate, describeErrors } from "./validate.js";
-import { KnownFigures, auditText } from "./figures.js";
+import { KnownFigures, auditText, addDates } from "./figures.js";
 import { figuresOf } from "./sim_vars.js";
 import { KINDS_BY_PATH, KIND_LABELS, DRAFT_KINDS, changeTable, recordList, finalizeDraft } from "./drafts.js";
 import { projectedRate, coveredBy } from "./payoff.js";
@@ -228,6 +228,19 @@ const coveringOf = (e) => (e.suggestion && e.suggestion.field === "contract" ? e
 const coveringContracts = (list) => [...new Set(list.filter((e) => e.rule === "DQ-01").map(coveringOf).filter(Boolean))];
 const PROJECTED = /\bproject(ed|ion|s)?\b/i;
 
+// Honesty: nothing reads "closed" for an exception a re-scan still finds. In every text the agent
+// writes (alert, review note, options, drafts, report), a sentence that says "closed", or that
+// exceptions close now, today, immediately or already, must also name the re-scan, or deny the
+// closure ("not closed", "nothing is closed").
+const CLOSED = /\bclosed\b/i;
+const CLOSES_NOW = /\bclos(e|es|ing)\b[^.!?]*\b(now|today|immediately|already|at once)\b|\b(now|today|immediately|already)\b[^.!?]*\bclos(e|es|ed|ing)\b/i;
+const RESCAN = /\bre-?scan/i;
+const DENIED = /\b(not|never)\s+((yet|been|be|counted|count|counts|as)\s+)*closed\b|\b(nothing|none|no exceptions?)\b(\s+(of|them|it|these|those|the|exceptions?|entries|lines)){0,3}\s+(is|are|was|were|counts as|count as)\s+(yet\s+)?closed\b/i;
+/** The sentences of a text that claim a closure without a re-scan (empty when it is honest). */
+export function claimsClosed(text) {
+  return sentences(text).filter((x) => (CLOSED.test(x) || CLOSES_NOW.test(x)) && !RESCAN.test(x) && !DENIED.test(x)).map((x) => x.trim());
+}
+
 // ---- the toolbox --------------------------------------------------------------------------------------
 
 /**
@@ -266,6 +279,7 @@ export function createToolbox(ctx) {
     drafts: new Map(),       // action id → { kind, recipient, status, records }
     followUpsTo: new Set(),
     rejections: { alert: 0, options: 0, review: 0, draft: 0, report: 0 },
+    honesty: 0,                     // texts refused because they claimed a closure without a re-scan
     facts: new KnownFigures(),      // ERP results and parameters
     engine: new KnownFigures(),     // engine results (no fix paths, no projections)
     pathFigures: new Map(),         // fix_paths id → KnownFigures
@@ -273,10 +287,11 @@ export function createToolbox(ctx) {
     reported: false, outcome: null, calls: 0, toolCalls: []
   };
   for (const id of ids) run.facts.id(id);
+  run.facts.dayNumber(day); // the run's day (today in a live run): the date the system prompt gives
   for (const [k, v] of Object.entries(params)) run.facts.add(k === "cost_of_capital" ? "share" : k === "day_rate_eur" ? "amount" : /days$/.test(k) ? "days" : "count", v);
 
   const handlers = {
-    erp_get_overview: (i) => ERP_TOOLS.erp_get_overview(world, i, { day, today }),
+    erp_get_overview: (i) => ERP_TOOLS.erp_get_overview(world, i, { day, today, params }),
     erp_query: (i) => ERP_TOOLS.erp_query(world, i),
     erp_get_record: (i) => ERP_TOOLS.erp_get_record(world, i),
     dq_scan: dqScan, dq_group: dqGroup, dq_suggest: dqSuggest, dq_classify: dqClassify, dq_history: dqHistory, dq_fix_paths: dqFixPaths,
@@ -301,6 +316,7 @@ export function createToolbox(ctx) {
     const isError = !!(result && result.error);
     let figures = [];
     if (!isError) {
+      addDates(run.facts, result); // the days and cohorts a date or "Week N" in a text may name
       if (name.startsWith("erp_")) {
         for (const f of result.figures || []) run.facts.add(f.type, f.value, f.currency || "EUR");
         for (const r of result.read || []) run.read.add(`${r.product}:${r.id}`);
@@ -350,10 +366,24 @@ export function createToolbox(ctx) {
     return run.projections.get(fpId) || new KnownFigures();
   }
 
+  /** Refuses a text that claims a closure no re-scan has shown (see claimsClosed). */
+  function honestyCheck(text, kind, tool) {
+    const bad = claimsClosed(text);
+    if (!bad.length) return null;
+    run.honesty += 1;
+    return {
+      error: `Honesty: ${bad.slice(0, 3).map((x) => `"${x.slice(0, 120)}"`).join("; ")} ${bad.length === 1 ? "claims" : "claim"} a closure, but nothing is closed until a re-scan no longer finds the exception. Write "approved, re-scan pending" for an approved fix, or say what a re-scan would close, then call ${tool} again.`,
+      refused: "guard", claims: bad
+    };
+  }
+
   /**
    * Audits a text; a sentence that says "projected" may also quote the projections of its result.
    * Returns { reject } (a refusal with the offending tokens), { flag: [tokens] } after two refusals,
-   * or {} when every figure is known.
+   * or {} when every figure is known. Refusals count per text: a text that passes or shows with its
+   * "Unchecked" tag resets its kind's count, so the next text of that kind (the follow-up to the next
+   * owner, the next set of options) gets its own two refusals (review finding R10; Rebate Hunter
+   * counts per kind and run).
    */
   function figureCheck(text, kind, tool, fpId = null) {
     const base = knownFor(kind, fpId);
@@ -364,12 +394,13 @@ export function createToolbox(ctx) {
       const r = auditText(sentence, PROJECTED.test(sentence) ? proj : base, opts);
       offending.push(...r.offending);
     }
-    if (!offending.length) return {};
+    if (!offending.length) { run.rejections[kind] = 0; return {}; }
     const tokens = [...new Set(offending.map((o) => o.token))];
     if (run.rejections[kind] < FIGURE_RETRIES) {
       run.rejections[kind] += 1;
       return { reject: { error: `Figure audit: ${offending.slice(0, 8).map((o) => `"${o.token}" (${o.reason})`).join("; ")}. Quote only figures this run's tools returned, as they are (a projection only in a sentence that says "projected"), or leave the figure out, then call ${tool} again.`, refused: "figures", offending: tokens } };
     }
+    run.rejections[kind] = 0;
     emit("notice", { level: "warn", text: `The ${kind === "options" ? "option texts" : kind} quote${kind === "options" ? "" : "s"} figures no tool returned (${tokens.join(", ")}); they show with an "Unchecked" tag.` });
     return { flag: tokens };
   }
@@ -556,6 +587,8 @@ export function createToolbox(ctx) {
     const missing = lines.filter((l) => run.ai.get(l)?.status !== "pending");
     if (missing.length) return { error: `These lines carry no pending AI suggestion: ${missing.slice(0, 8).join(", ")}. Propose one with dq_classify first.`, refused: "guard" };
     let note = String(i.note || "").trim();
+    const honest = honestyCheck(note, "review", "ui_request_review");
+    if (honest) return honest;
     const audit = figureCheck(note, "review", "ui_request_review");
     if (audit.reject) return audit.reject;
     counters.rev += 1;
@@ -638,7 +671,8 @@ export function createToolbox(ctx) {
     const paths = {};
     for (const id of PATH_IDS) {
       const p = fx.paths[id];
-      paths[id] = { ...p, projected_closure_rate: p.applicable ? projectedRate(world, run.log, id, { caseExceptions: list, closed: p.closed, day, params }) : null };
+      // A mass correction is projected by a re-scan within the scope of the scan that found the case.
+      paths[id] = { ...p, projected_closure_rate: p.applicable ? projectedRate(world, run.log, id, { caseExceptions: list, closed: p.closed, day, params, rules: k.scan.rules, filters: k.scan.filters }) : null };
     }
     paths.nothing = { ...fx.paths.nothing };
     counters.fp += 1;
@@ -709,6 +743,8 @@ export function createToolbox(ctx) {
     const miss = alertMissing(k);
     if (miss.lacks) return { error: `Verified alert refused. Missing: ${miss.lacks.join("; ")}.`, refused: "guard", missing: miss.lacks };
     const texts = { title: String(i.title).trim(), root_cause: String(i.root_cause).trim(), fix_at_source: String(i.fix_at_source).trim(), summary: String(i.summary).trim() };
+    const honest = honestyCheck(Object.values(texts).join("\n"), "alert", "ui_report_alert");
+    if (honest) return honest;
     const audit = figureCheck(Object.values(texts).join("\n"), "alert", "ui_report_alert");
     if (audit.reject) return audit.reject;
     const c = k.scan.result.context;
@@ -756,6 +792,8 @@ export function createToolbox(ctx) {
     if (na.length) return { error: `Not applicable for this case: ${na.join(", ")} (no suggestions to correct with). Choose among ${PATH_IDS.filter((p) => res.paths[p].applicable).join(", ")}.`, refused: "guard" };
     if (!chosen.includes(i.recommended)) return { error: `The recommendation "${i.recommended}" is not one of the options (${chosen.join(", ")}).`, refused: "guard" };
     const texts = i.options.flatMap((o) => [o.title, o.description, o.residual_risk]).concat([i.nothing_note]);
+    const honest = honestyCheck(texts.join("\n"), "options", "ui_propose_options");
+    if (honest) return honest;
     const audit = figureCheck(texts.join("\n"), "options", "ui_propose_options", res.fix_paths_id);
     if (audit.reject) return audit.reject;
     run.optionsSeq += 1;
@@ -790,7 +828,9 @@ export function createToolbox(ctx) {
       const opt = run.options.list.find((o) => o.id === id);
       run.approved = { id, label: id === "nothing" ? "Do nothing (accept the risk)" : `${id}: ${opt.title}` };
       const res = run.fixPaths.get(run.options.fixPathsId).result;
-      const covered = coveredBy(id, run.alert.members);
+      // The case as it stands now: AI suggestions approved after the alert count here as they did in
+      // dq_fix_paths (review finding R6).
+      const covered = coveredBy(id, withApprovedAi(run.alert.members));
       const projected = id === "nothing" ? null : res.paths[id].projected_closure_rate;
       emit("kpi_update", { stage: "projected", closure_rate: res.measured_closure_rate, projected_closure_rate: projected, path: id });
       emit("board_update", { approved: { path: id, exceptions: covered } });
@@ -827,7 +867,8 @@ export function createToolbox(ctx) {
     const recipient = ix.users.get(String(i.recipient));
     if (!recipient) return { error: `Unknown recipient "${i.recipient}". Use a user id (erp_query on user_org).`, refused: "guard" };
     const res = run.fixPaths.get(run.options.fixPathsId).result;
-    const members = run.alert.members;
+    // The case's exceptions with every AI suggestion approved so far, as dq_fix_paths counted them.
+    const members = withApprovedAi(run.alert.members);
     let table = null;
     let list = null;
     let records = [];
@@ -853,6 +894,8 @@ export function createToolbox(ctx) {
     const subject = String(i.subject).trim();
     const body = String(i.body).trim();
     if (!subject || !body) return { error: "subject and body are required." };
+    const honest = honestyCheck(`${subject}\n${body}`, "draft", "ui_draft_action");
+    if (honest) return honest;
     const audit = figureCheck(`${subject}\n${body}`, "draft", "ui_draft_action", run.options.fixPathsId);
     if (audit.reject) return audit.reject;
     counters.act += 1;
@@ -899,10 +942,17 @@ export function createToolbox(ctx) {
     return { all_decided: true, approved: decisions.filter((d) => d.decision === "approved").length, rejected: decisions.filter((d) => d.decision === "rejected").length, decisions, next: "Write the report with ui_final_report. Approved drafts are cleared for sending by a person; nothing was sent." };
   }
 
-  /** An approved follow-up or change request routes the open log entries of its records. */
+  /**
+   * An approved follow-up or change request routes the open log entries of its records that are routed
+   * to its recipient (method: "when a person approves a draft to its routed-to person"). A change
+   * request to one owner leaves the entries routed to another owner open (review finding R16).
+   */
   function routeEntries(d) {
     const recs = new Set(d.records);
-    for (const x of run.log) if (x.status === "open" && recs.has(x.record) && run.alert.members.some((e) => e.id === `${x.rule}|${x.record}`)) Object.assign(x, { status: "routed", routed_day: day });
+    for (const x of run.log) {
+      if (x.status !== "open" || !recs.has(x.record) || x.routed_to !== d.recipient) continue;
+      if (run.alert.members.some((e) => e.id === `${x.rule}|${x.record}`)) Object.assign(x, { status: "routed", routed_day: day });
+    }
   }
 
   // -- the report -----------------------------------------------------------------------------------------
@@ -918,9 +968,8 @@ export function createToolbox(ctx) {
     if (run.approved && run.approved.id !== "nothing" && run.drafts.size === 0) return { error: "The approved path has no drafts yet. Draft what it allows first (ui_draft_action), then ui_await_approvals.", refused: "guard" };
     let markdown = String(i.markdown || "").trim();
     if (markdown.length < 40) return { error: "The report is empty. Write a short Markdown report." };
-    if (/\bclosed\b/i.test(markdown) && run.approved && !/\bnot (yet )?closed\b|\bre-scan\b/i.test(markdown)) {
-      return { error: "The report says closed, but nothing is closed until a re-scan no longer finds the exception. Write \"approved, re-scan pending\" for the approved fix.", refused: "guard" };
-    }
+    const honest = honestyCheck(markdown, "report", "ui_final_report");
+    if (honest) return honest;
     const audit = figureCheck(markdown, "report", "ui_final_report");
     if (audit.reject) return audit.reject;
     if (audit.flag) markdown += `\n\n*Unchecked figures (no tool returned them): ${audit.flag.join(", ")}.*`;

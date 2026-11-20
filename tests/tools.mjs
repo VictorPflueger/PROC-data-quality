@@ -14,6 +14,11 @@ import { toolPlain } from "../js/tool_plain.js";
 import { summarizeToolResult } from "../js/summaries.js";
 import { SCENARIO_SPECS } from "../js/world_check.js";
 import { DRAFT_FOOTER, MOCK_LINE } from "../js/drafts.js";
+import { closureRate } from "../js/history.js";
+import { isLive } from "../js/engine.js";
+import { projectedRate } from "../js/payoff.js";
+import { PARAMS } from "../js/params.js";
+import { dayLabel } from "../js/format.js";
 
 const load = (f) => { const ctx = { window: {} }; vm.runInNewContext(fs.readFileSync(path.join(APP_ROOT, f), "utf8"), ctx); return ctx.window; };
 const { WORLD } = load("data/world.js");
@@ -27,11 +32,11 @@ const BRIEF_TOOLS = ["erp_get_overview", "erp_query", "erp_get_record", "dq_scan
   "ui_mark_board", "ui_request_review", "ui_report_alert", "ui_propose_options", "ui_await_decision", "ui_draft_action", "ui_await_approvals", "ui_final_report"];
 
 /** A toolbox with a scripted person and the events it emitted. */
-function session({ review = "approve", decisions = null, drafts = "approve" } = {}) {
+function session({ review = "approve", decisions = null, drafts = "approve", today = undefined } = {}) {
   const human = createHumanQueue();
   const events = [];
   const tb = createToolbox({
-    world: WORLD, mode: "live", onPhase: () => {}, waitFor: (k, t) => human.waitFor(k, t),
+    world: WORLD, mode: "live", today, onPhase: () => {}, waitFor: (k, t) => human.waitFor(k, t),
     emit: (type, payload) => {
       events.push({ type, payload });
       if (type === "options" && decisions) queueMicrotask(() => decisions(payload).forEach((d) => human.push({ type: "option_decision", payload: d })));
@@ -170,6 +175,19 @@ const refused = (out, pattern) => out.isError && pattern.test(out.result.error |
   await run("erp_get_record", { product: "contract", id: "4600000101" });
   await run("ui_report_alert", { title: "t", grouping: g.grouping_id, group: "punch-out", root_cause: "r", fix_at_source: "f", summary: "s" });
   const fp = (await run("dq_fix_paths", { grouping: g.grouping_id, group: "punch-out" })).result;
+  // A mass correction's projection counts only what the corrections close: the re-scan keeps to the
+  // scope of the scan that found the case (plant 3010), so the rate rises by the case's own entries in
+  // the eight weekly cohorts and by nothing a wider re-scan would close anyway (review finding R1).
+  {
+    const caseIds = new Set(events.find((e) => e.type === "board_update" && e.payload.case)?.payload.case.exceptions || []);
+    const base = closureRate(WORLD.exception_log, 0);
+    const inCohort = WORLD.exception_log.filter((x) => isLive(x.status) && caseIds.has(`${x.rule}|${x.record}`) && -x.detected_day >= 14 && -x.detected_day <= 69).length;
+    const want = (base.closed + inCohort) / base.eligible;
+    check(caseIds.size === 30 && inCohort > 0 && near(fp.measured_closure_rate, base.value) && near(fp.paths.A.projected_closure_rate, want) && near(fp.paths.C.projected_closure_rate, want),
+      `a mass correction is projected within the case's scan: (${base.closed} + ${inCohort} of the case's entries) / ${base.eligible} = ${(want * 100).toFixed(1)} % (got ${(fp.paths.C.projected_closure_rate * 100).toFixed(1)} %)`);
+    const wide = projectedRate(WORLD, WORLD.exception_log, "C", { caseExceptions: [...caseIds].map((id) => ({ id, rule: "DQ-01", record: { product: "po_line", id: id.split("|")[1] }, suggestion: { field: "contract", value: "4600000101" } })), day: 0, params: PARAMS });
+    check(wide > want, `control: an unscoped re-scan would also close entries outside the case (${(wide * 100).toFixed(1)} %)`);
+  }
   await run("ui_propose_options", { fix_paths_id: fp.fix_paths_id, options: [{ path: "A", title: "a", description: "d", residual_risk: "r" }, { path: "C", title: "c", description: "d", residual_risk: "r" }], recommended: "C", nothing_note: "n" });
   const d = (await run("ui_await_decision", {})).result;
   check(d.decision === "approved" && d.path === "C" && events.some((e) => e.type === "notice" && e.payload.guardrail && /no longer on screen/.test(e.payload.text)), "a stale decision is ignored with a Guardrail line; the decision on screen counts");
@@ -186,8 +204,105 @@ const refused = (out, pattern) => out.isError && pattern.test(out.result.error |
   setTimeout(() => human.push({ type: "action_decision", payload: { action_id: draft.action_id, decision: "approved" } }), 5);
   check(!(await ap).isError, "ui_await_approvals waits for every draft");
   check(refused(await run("ui_final_report", { outcome: "risk_accepted", markdown: "## Report\nThe risk was accepted, which is not what happened here." }), /The outcome is fix_approved/), "a report whose outcome does not follow the decision is refused");
-  check(refused(await run("ui_final_report", { outcome: "fix_approved", markdown: "## Report\nThe punch-out exceptions are now closed for good." }), /says closed/), "a report that calls an approved fix closed is refused");
+  check(refused(await run("ui_final_report", { outcome: "fix_approved", markdown: "## Report\nThe punch-out exceptions are now closed for good." }), /claims a closure/), "a report that calls an approved fix closed is refused");
+  check(refused(await run("ui_final_report", { outcome: "fix_approved", markdown: "## Report\nAll 30 exceptions are closed. A re-scan next week will confirm it." }), /Honesty: "All 30 exceptions are closed\." claims a closure/), "a report is read sentence by sentence: a re-scan in the next sentence does not excuse a closed one");
   check(!(await run("ui_final_report", { outcome: "fix_approved", markdown: "## Report\nPath C is approved, re-scan pending; nothing was sent." })).isError, "the report follows the decision");
+}
+{
+  // Honesty in every text the agent writes, not only the report (review finding R5): the alert, the
+  // options and a draft that claim a closure no re-scan has shown are refused; the same texts that say
+  // what a re-scan would close pass (the controls).
+  const { run, human, events } = session({ drafts: "manual", decisions: (o) => [{ options_seq: o.options_seq, option_id: "C", decision: "approved" }] });
+  await run("dq_scan", { filters: [{ key: "plant", values: ["3010"] }] });
+  const g = (await run("dq_group", { rules: ["DQ-01"], by: ["channel"], filters: [{ key: "plant", values: ["3010"] }] })).result;
+  for (const rec of g.groups[0].sample_records.slice(0, 3)) await run("erp_get_record", { product: "po_line", id: rec });
+  await run("erp_get_record", { product: "contract", id: "4600000101" });
+  const alert = { title: "Contract references lost in punch-out", grouping: g.grouping_id, group: "punch-out", root_cause: "The catalog drops the reference.", fix_at_source: "Map the contract in the catalog." };
+  check(refused(await run("ui_report_alert", { ...alert, summary: "These exceptions are already closed in practice." }), /Honesty: "These exceptions are already closed in practice\." claims a closure/), "an alert that calls the exceptions closed is refused");
+  check(!(await run("ui_report_alert", { ...alert, summary: "A correction of the lines would close them once a re-scan no longer finds them." })).isError, "control: an alert that names the re-scan passes");
+  const fp = (await run("dq_fix_paths", { grouping: g.grouping_id, group: "punch-out" })).result;
+  const option = (title, risk) => ({ fix_paths_id: fp.fix_paths_id, options: [{ path: "A", title: "Correct the references", description: "d", residual_risk: "r" }, { path: "C", title, description: "d", residual_risk: risk }], recommended: "C", nothing_note: "n" });
+  check(refused(await run("ui_propose_options", option("Close all 30 now", "r")), /Honesty: "Close all 30 now" claims a closure/), "an option that closes everything now is refused");
+  check(refused(await run("ui_propose_options", option("Correct and fix at source", "None: the exceptions are closed")), /claims a closure/), "an option whose residual risk calls the exceptions closed is refused");
+  check(!(await run("ui_propose_options", option("Correct and fix at source", "A re-scan shows what the correction closed."))).isError, "control: options that name the re-scan pass");
+  const d = (await run("ui_await_decision", {})).result;
+  check(refused(await run("ui_draft_action", { kind: "change_request", recipient: "U101", subject: "Contract reference on punch-out lines: closed", body: "Please set the reference." }), /claims a closure/), "a draft whose subject calls the case closed is refused");
+  check(!(await run("ui_draft_action", { kind: "change_request", recipient: "U101", subject: "Set the contract reference on the punch-out lines", body: "Please set the reference; a re-scan then shows what is closed." })).isError && d.path === "C", "control: a draft that names the re-scan passes");
+}
+{
+  // Dates and weekly cohorts in the agent's texts (review finding R9): a date must be one a tool
+  // returned (here the run's day, written as the app writes it in September: "Tue 15 Sept"), and
+  // "Week N" must be a cohort the history tool returned. Each refusal has its control.
+  const today = new Date(2026, 8, 15);
+  const { run } = session({ today, decisions: (o) => [{ options_seq: o.options_seq, option_id: "C", decision: "approved" }] });
+  const ov = (await run("erp_get_overview", {})).result;
+  check(ov.as_of.date === "Tue 15 Sept", `the tools write September as the app does (${ov.as_of.date})`);
+  await run("dq_scan", { filters: [{ key: "plant", values: ["3010"] }] });
+  const g = (await run("dq_group", { rules: ["DQ-01"], by: ["channel"], filters: [{ key: "plant", values: ["3010"] }] })).result;
+  for (const rec of g.groups[0].sample_records.slice(0, 3)) await run("erp_get_record", { product: "po_line", id: rec });
+  await run("erp_get_record", { product: "contract", id: "4600000101" });
+  const alert = { title: "Contract references lost in punch-out", grouping: g.grouping_id, group: "punch-out", root_cause: "The catalog drops the reference.", fix_at_source: "Map the contract in the catalog." };
+  check(refused(await run("ui_report_alert", { ...alert, summary: "Since Wed 16 Sept the lines lack the reference." }), /"Wed 16 Sept" \(a date no tool returned\)/), "an alert naming a date no tool returned is refused");
+  check(refused(await run("ui_report_alert", { ...alert, summary: "Week 8 shows the same gap." }), /"Week 8" \(a week no tool returned\)/), "an alert naming a weekly cohort before the history tool returned one is refused");
+  check(!(await run("ui_report_alert", { ...alert, summary: "As of Tue 15 Sept the punch-out lines lack the reference." })).isError, "control: an alert naming the run's day as the app writes it (\"Sept\") passes");
+  const hist = (await run("dq_history", { grouping: g.grouping_id, group: "punch-out" })).result;
+  const w8 = hist.cohorts.find((c) => c.week === 8);
+  const fp = (await run("dq_fix_paths", { grouping: g.grouping_id, group: "punch-out" })).result;
+  const options = (text) => ({ fix_paths_id: fp.fix_paths_id, options: [{ path: "A", title: "Correct the references", description: text, residual_risk: "r" }, { path: "C", title: "Correct and fix at source", description: "d", residual_risk: "r" }], recommended: "C", nothing_note: "n" });
+  check(refused(await run("ui_propose_options", options("Week 9 shows the same gap.")), /"Week 9" \(a week no tool returned\)/), "an option naming a cohort the history tool did not return is refused");
+  check(!(await run("ui_propose_options", options(`Week 8, from ${dayLabel(w8.from, today)} to ${dayLabel(w8.to, today)}, shows the same gap.`))).isError, `control: an option naming a cohort and its days the history tool returned passes (${dayLabel(w8.from, today)})`);
+}
+{
+  // Routing (review finding R16): an approved draft routes the open log entries of its records that
+  // are routed to its recipient (brief: "when a person approves a draft to its routed-to person"); a
+  // change request to one owner leaves the entries routed to another owner open. The case: DQ-07 at
+  // plant 2010, whose new entries are routed to U124 (six) and U125 (one).
+  const { tb, run, human, events } = session({ drafts: "manual", decisions: (o) => [{ options_seq: o.options_seq, option_id: "C", decision: "approved" }] });
+  const f = [{ key: "plant", values: ["2010"] }];
+  await run("dq_scan", { rules: ["DQ-07"], filters: f });
+  const g = (await run("dq_group", { rules: ["DQ-07"], by: ["plant"], filters: f })).result;
+  const grp = g.groups[0].group;
+  for (const rec of g.groups[0].sample_records.slice(0, 3)) await run("erp_get_record", { product: "po_line", id: rec });
+  const alert = await run("ui_report_alert", { title: "Payment terms shorter than agreed at plant 2010", grouping: g.grouping_id, group: grp, summary: "The order lines at plant 2010 carry shorter terms than the supplier master.", root_cause: "The terms are typed on the order instead of taken from the master.", fix_at_source: "Take the terms from the supplier master." });
+  const fp = (await run("dq_fix_paths", { grouping: g.grouping_id, group: grp })).result;
+  await run("ui_propose_options", { fix_paths_id: fp.fix_paths_id, options: [{ path: "A", title: "Correct the terms", description: "d", residual_risk: "r" }, { path: "C", title: "Correct and take terms from the master", description: "d", residual_risk: "r" }], recommended: "C", nothing_note: "n" });
+  await run("ui_await_decision", {});
+  const before = new Map(tb.log().map((x) => [x.id, { ...x }]));
+  const cr = await run("ui_draft_action", { kind: "change_request", recipient: "U124", subject: "Set the agreed payment terms on the plant 2010 lines", body: "Please set the agreed terms on the lines below." });
+  const draft = events.filter((e) => e.type === "action_draft").pop()?.payload;
+  const recs = new Set(draft?.records || []);
+  const open = [...before.values()].filter((x) => x.status === "open" && x.rule === "DQ-07" && recs.has(x.record));
+  const mine = open.filter((x) => x.routed_to === "U124");
+  const others = open.filter((x) => x.routed_to !== "U124");
+  const ap = run("ui_await_approvals", {});
+  setTimeout(() => human.push({ type: "action_decision", payload: { action_id: draft.action_id, decision: "approved" } }), 5);
+  await ap;
+  const after = new Map(tb.log().map((x) => [x.id, x]));
+  check(!alert.isError && !cr.isError && mine.length > 0 && others.length > 0, `the change request's records hold open entries routed to its recipient (${mine.length}) and to another owner (${others.length})`);
+  check(mine.length > 0 && mine.every((x) => after.get(x.id).status === "routed" && after.get(x.id).routed_day === 0), "an approved change request routes the open entries routed to its recipient");
+  check(others.length > 0 && others.every((x) => after.get(x.id).status === "open" && after.get(x.id).routed_day === null), `an approved change request leaves the entries routed to another owner open (${others.map((x) => `${x.id} ${after.get(x.id).status}`).join(", ")})`);
+}
+{
+  // Refusals count per text (review finding R10): after two refusals a text shows with an "Unchecked"
+  // tag; the next text of the same kind (the follow-up to the next owner) gets its own two refusals.
+  const { run, events } = session({ drafts: "manual", decisions: (o) => [{ options_seq: o.options_seq, option_id: "B", decision: "approved" }] });
+  const f = [{ key: "plant", values: ["2010"] }];
+  await run("dq_scan", { rules: ["DQ-07"], filters: f });
+  const g = (await run("dq_group", { rules: ["DQ-07"], by: ["plant"], filters: f })).result;
+  const grp = g.groups[0].group;
+  for (const rec of g.groups[0].sample_records.slice(0, 3)) await run("erp_get_record", { product: "po_line", id: rec });
+  await run("ui_report_alert", { title: "Payment terms shorter than agreed at plant 2010", grouping: g.grouping_id, group: grp, summary: "The order lines at plant 2010 carry shorter terms than the supplier master.", root_cause: "The terms are typed on the order instead of taken from the master.", fix_at_source: "Take the terms from the supplier master." });
+  const fp = (await run("dq_fix_paths", { grouping: g.grouping_id, group: grp })).result;
+  await run("ui_propose_options", { fix_paths_id: fp.fix_paths_id, options: [{ path: "A", title: "Correct the terms", description: "d", residual_risk: "r" }, { path: "B", title: "Ask the owners", description: "d", residual_risk: "r" }], recommended: "B", nothing_note: "n" });
+  await run("ui_await_decision", {});
+  const people = fp.case.routed_to.map((p) => p.person);
+  const bad = (who) => run("ui_draft_action", { kind: "follow_up", recipient: who, subject: "Payment terms on your lines", body: "The scan found 164 exceptions in all; please check the terms on your lines." });
+  const first = [await bad(people[0]), await bad(people[0]), await bad(people[0])];
+  const flagged = events.filter((e) => e.type === "action_draft").pop()?.payload;
+  check(people.length >= 2 && first[0].isError && first[1].isError && !first[2].isError && flagged?.unchecked, `a follow-up refused twice shows with an "Unchecked" tag on the third attempt (${people.join(", ")})`);
+  const next = await bad(people[1]);
+  check(refused(next, /Figure audit: "164"/), "the next owner's follow-up gets its own refusal, not an Unchecked tag at once");
+  check(!(await run("ui_draft_action", { kind: "follow_up", recipient: people[1], subject: "Payment terms on your lines", body: "Please check the payment terms on the lines below." })).isError, "control: the corrected follow-up passes");
 }
 {
   // The review: AI suggestions are refused when unknown, count only once approved.
@@ -216,6 +331,27 @@ const refused = (out, pattern) => out.isError && pattern.test(out.result.error |
     if (mode === "approve") check(rv.approved.length === 1 && after === before + 1, `an approved suggestion counts in the fix paths (s ${before} → ${after})`);
     else check(rv.rejected.length === 1 && after === before, `a rejected suggestion counts as none (s stays ${after})`);
   }
+}
+{
+  // A review after the alert (review finding R6): the suggestions approved then count in the fix paths,
+  // in what the approval covers and in the change request alike.
+  const { run, events } = session({ decisions: (o) => [{ options_seq: o.options_seq, option_id: "A", decision: "approved" }] });
+  await run("dq_scan", { rules: ["DQ-02", "DQ-03"], filters: [{ key: "plant", values: ["1020"] }] });
+  const g = (await run("dq_group", { rules: ["DQ-02"], by: ["channel"], filters: [{ key: "plant", values: ["1020"] }] })).result;
+  const label = g.groups[0].group;
+  for (const id of g.groups[0].sample_records.slice(0, 3)) await run("erp_get_record", { product: "po_line", id });
+  check(!(await run("ui_report_alert", { title: "Unclassified spend", grouping: g.grouping_id, group: label, root_cause: "The free-text form lets the group stay empty.", fix_at_source: "Make the group mandatory.", summary: "Free-text lines without a material group." })).isError, "the alert passes before the review");
+  const script = load("data/sim_runs.js").SIM_RUNS["SC-UNCLASSIFIED"].steps.find((x) => x.tool === "dq_classify");
+  const cls = (await run("dq_classify", script.input)).result;
+  const rv = (await run("ui_request_review", { line_ids: cls.accepted.map((a) => a.line_id), note: "Please check these groups." })).result;
+  const fp = (await run("dq_fix_paths", { grouping: g.grouping_id, group: label })).result;
+  await run("ui_propose_options", { fix_paths_id: fp.fix_paths_id, options: [{ path: "A", title: "Mass correction", description: "Set the groups.", residual_risk: "None noted." }, { path: "B", title: "Follow-up", description: "Ask the buyers.", residual_risk: "Slow." }], recommended: "A", nothing_note: "Unclassified spend keeps growing." });
+  await run("ui_await_decision", {});
+  const covered = events.filter((e) => e.type === "board_update" && e.payload.approved).pop()?.payload.approved.exceptions.length;
+  await run("ui_draft_action", { kind: "change_request", recipient: "U103", subject: "Mock change request: material groups", body: "Please set the material groups below." });
+  const rows = events.filter((e) => e.type === "action_draft").pop()?.payload.records.length;
+  check(rv.approved.length > 0 && fp.paths.A.closed === fp.case.n && covered === fp.paths.A.closed && rows === fp.paths.A.closed,
+    `suggestions approved after the alert count everywhere: the fix path closes ${fp.paths.A.closed}, the approval covers ${covered}, the change request lists ${rows}`);
 }
 {
   // The figure audit: two refusals, then the text shows with an Unchecked tag, never silently.

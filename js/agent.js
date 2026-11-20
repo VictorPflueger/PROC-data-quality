@@ -21,6 +21,7 @@ import { recordApiExchange } from "./audit.js";
 import { getKey } from "./keystore.js";
 import { euroCents } from "./format.js";
 import { appToday } from "./clock.js";
+import { PARAMS } from "./params.js";
 
 const ABORT = Symbol("abort");
 const ORDER_FREE = (name) => name.startsWith("erp_");
@@ -29,7 +30,7 @@ const ORDER_FREE = (name) => name.startsWith("erp_");
 export function createLiveAgent(hooks = {}) {
   let current = null;
 
-  async function run({ entry, tip = "", modelId }) {
+  async function run({ entry, tip = "", modelId, params = PARAMS }) {
     const modelDef = MODELS.find((m) => m.id === modelId) || MODELS[0];
     const todayDate = appToday();
     const today = todayDate.toLocaleDateString("en-GB", { weekday: "long", day: "numeric", month: "long", year: "numeric" });
@@ -43,7 +44,7 @@ export function createLiveAgent(hooks = {}) {
     const offs = HUMAN_EVENTS.map((type) => bus.on(type, (ev) => { if (!r.ended) human.push(ev); }));
     r.gate = createPhaseGate((state) => { if (!r.ended) bus.emit("state_change", { state }); });
     const toolbox = createToolbox({
-      world: window.WORLD, mode: "live", today: todayDate,
+      world: window.WORLD, mode: "live", today: todayDate, params,
       emit: (type, payload) => { if (!r.ended) bus.emit(type, payload); },
       onPhase: (s) => r.gate.set(s),
       waitFor: (kind, test) => human.waitFor(kind, test)

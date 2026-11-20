@@ -1,10 +1,12 @@
-// Audit tab: chronological log of every event and every model call, with filters, JSON export and
-// "Save run as simulation" (enabled after a completed live run of a preset scenario).
+// Audit tab: chronological log of every event and every model call, with filters; the three exports
+// (the report as Markdown, the exceptions as CSV, the audit log as JSON, js/exports.js) and "Save run
+// as simulation" (enabled after a completed live run of a preset scenario).
 
-import { h, clear, downloadText, setDisabled } from "./dom.js";
+import { h, clear, downloadText, setDisabled, isDisabled } from "./dom.js";
 import { icon } from "./icons.js";
 import { clock, timeOfDay, int, pct1 } from "./format.js";
-import { auditRows, onAuditEvent, buildAuditExport, auditFileName } from "./audit.js";
+import { auditRows, onAuditEvent, buildAuditExport, auditFileName, auditRunInfo } from "./audit.js";
+import { exceptionsCsv, exceptionsFileName, lastReport, reportDocument, reportFileName } from "./exports.js";
 import { canRecord, saveRunAsSimulation } from "./recorder.js";
 
 const GROUPS = {
@@ -16,12 +18,15 @@ const GROUPS = {
   system: { label: "System", types: ["run_start", "run_end", "state_change", "notice", "board_update", "kpi_update", "cost_update", "attempt_discarded"] }
 };
 
-export function createAuditPanel(panel, { onCount } = {}) {
+/** getExceptions: () => the board's snapshot of its rule tables (the CSV's rows). */
+export function createAuditPanel(panel, { onCount, getExceptions = () => [] } = {}) {
   let filter = "all";
   const filterBtns = new Map();
   const tbody = h("tbody");
   const status = h("div", { class: "vc-alert vc-alert--success audit-status", role: "status", hidden: true });
   const saveBtn = h("button", { class: "vc-button vc-button--outline button-compact", type: "button", id: "btn-save-sim", on: { click: saveSimulation } }, icon("download", 16), "Save run as simulation");
+  const reportBtn = h("button", { class: "vc-button vc-button--outline button-compact", type: "button", id: "btn-export-report", on: { click: exportReport } }, icon("download", 16), "Report (.md)");
+  const csvBtn = h("button", { class: "vc-button vc-button--outline button-compact", type: "button", id: "btn-export-csv", on: { click: exportCsv } }, icon("download", 16), "Exceptions (.csv)");
   const head = h("div", { class: "audit-head" },
     h("div", { class: "audit-filters", role: "group", "aria-label": "Filter audit events" },
       Object.entries(GROUPS).map(([id, g]) => {
@@ -31,9 +36,9 @@ export function createAuditPanel(panel, { onCount } = {}) {
         filterBtns.set(id, b);
         return b;
       })),
-    h("div", { class: "audit-actions" },
-      saveBtn,
-      h("button", { class: "vc-button button-compact", type: "button", id: "btn-export", on: { click: exportJson } }, icon("download", 16), "Export JSON")));
+    h("div", { class: "audit-actions", role: "group", "aria-label": "Exports" },
+      saveBtn, reportBtn, csvBtn,
+      h("button", { class: "vc-button button-compact", type: "button", id: "btn-export", on: { click: exportJson } }, icon("download", 16), "Audit log (.json)")));
   // Vici's table; its wrapper clips without scrolling, so the header row sticks while the drawer scrolls.
   const table = h("div", { class: "vc-table-wrap audit-wrap" },
     h("table", { class: "vc-table vc-table--compact audit-table" },
@@ -57,6 +62,9 @@ export function createAuditPanel(panel, { onCount } = {}) {
   function updateSave() {
     const can = canRecord();
     setDisabled(saveBtn, !can.ok, can.reason);
+    const run = auditRunInfo();
+    setDisabled(reportBtn, !lastReport(), run ? "The report follows at the end of the run." : "No run yet: start the agent first.");
+    setDisabled(csvBtn, !run, "No run yet: start the agent first.");
   }
 
   function renderAll() {
@@ -70,7 +78,7 @@ export function createAuditPanel(panel, { onCount } = {}) {
   onAuditEvent((ev) => {
     if (matches(ev)) tbody.appendChild(row(ev));
     onCount?.(auditRows().length);
-    if (ev.type === "run_end" || ev.type === "run_start") {
+    if (ev.type === "run_end" || ev.type === "run_start" || ev.type === "report") {
       updateSave();
       if (ev.type === "run_start") setStatus("");
     }
@@ -78,6 +86,17 @@ export function createAuditPanel(panel, { onCount } = {}) {
 
   function exportJson() {
     downloadText(auditFileName(), buildAuditExport());
+  }
+
+  function exportReport() {
+    if (isDisabled(reportBtn)) return;
+    downloadText(reportFileName(), reportDocument(lastReport()), "text/markdown");
+  }
+
+  function exportCsv() {
+    if (isDisabled(csvBtn)) return;
+    const run = auditRunInfo();
+    downloadText(exceptionsFileName(), exceptionsCsv(getExceptions(), { mode: run?.mode, run_id: run?.run_id }), "text/csv");
   }
 
   async function saveSimulation() {

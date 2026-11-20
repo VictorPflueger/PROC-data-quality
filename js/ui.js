@@ -17,6 +17,7 @@ import { resetAudit } from "./audit.js";
 import { createControls } from "./controls.js";
 import { chooseMode, askApiKey, askCustomScenario, showReport } from "./dialogs.js";
 import { openDiagnostics } from "./diagnostics_view.js";
+import { openMethod, paramText } from "./method.js";
 import { openIntro, introSeen } from "./intro.js";
 import { createSimulationPlayer } from "./simulation.js";
 import { createLiveAgent } from "./agent.js";
@@ -25,7 +26,9 @@ import { logState } from "./history.js";
 import { dayLabel } from "./format.js";
 import { appToday } from "./clock.js";
 import { MODELS } from "./config.js";
-import { h, withTooltip } from "./dom.js";
+import { PARAMS } from "./params.js";
+import { liveParams, changedParams } from "./settings.js";
+import { h, withTooltip, prefersReducedMotion } from "./dom.js";
 import { icon } from "./icons.js";
 
 const modelLabel = (id) => MODELS.find((m) => m.id === id)?.label || id || null;
@@ -72,7 +75,7 @@ export function initUI() {
       bus.emit("confirmation_decision", { ...d, by: "user" });
     }
   });
-  const auditPanel = createAuditPanel(drawer.panel("audit"), { onCount: (n) => drawer.setCount("audit", n) });
+  const auditPanel = createAuditPanel(drawer.panel("audit"), { onCount: (n) => drawer.setCount("audit", n), getExceptions: () => board.snapshot() });
   const player = createSimulationPlayer({ getSpeed: () => getState().speed });
   const agent = createLiveAgent({
     onKeyRejected: () => {
@@ -98,6 +101,7 @@ export function initUI() {
     onSpeed: (n) => setState({ speed: n }),
     onAbort: () => abort("Stopped by the user."),
     onReset: () => resetWorkspace(),
+    onMethod: () => openMethod({ running: isRunning(getState()) }),
     onDiagnostics: () => openDiagnostics()
   });
 
@@ -122,7 +126,7 @@ export function initUI() {
   // ---- state → view ----------------------------------------------------------------------------
   const render = (s) => {
     const scenario = byId(s.scenarioId);
-    controls.update(s, { scenarioLabel: scenario ? `${scenario.n}. ${scenario.title}` : "Choose" });
+    controls.update(s, { scenarioLabel: scenario ? `${scenario.n}. ${scenario.title}` : "Choose", scenarioShort: scenario ? `Scenario ${scenario.n}` : "Choose" });
     badge.dataset.mode = s.mode || "none";
     // A Vici tag: LIVE solid merlot with a pulsing hexagon, SIMULATION on its neutral tape.
     badge.className = s.mode === "live" ? "vc-tag vc-tag--solid mode-badge" : "vc-tag mode-badge";
@@ -141,8 +145,72 @@ export function initUI() {
     const st = ev.payload.status;
     setState({ runState: st === "done" || st === "no_findings" ? "done" : st === "incomplete" ? "stopped" : st });
   });
-  bus.on("options", () => drawer.show("options"));
-  bus.on("action_draft", () => drawer.show("outbox"));
+  bus.on("options", () => showDrawer("options"));
+  bus.on("action_draft", () => showDrawer("outbox"));
+
+  // The run switches the drawer's tab by itself (options, then drafts). A keyboard user whose focus was
+  // in the panel that closes is not left on the page's body: the focus moves to the first decision of
+  // the panel that opens, or to its tab.
+  function showDrawer(tab) {
+    const before = document.activeElement;
+    const inDrawer = !!before && before !== document.body && document.getElementById("drawer").contains(before);
+    const switched = !document.getElementById(`tab-${tab}`)?.matches('[aria-selected="true"]');
+    drawer.show(tab);
+    const body = document.querySelector("#drawer .drawer-body");
+    if (switched && body) body.scrollTop = 0;
+    if (inDrawer && (!before.isConnected || !before.getClientRects().length)) {
+      const panel = document.getElementById(`panel-${tab}`);
+      const target = panel?.querySelector('[data-action="approve"]:not([aria-disabled="true"])') || document.getElementById(`tab-${tab}`);
+      target?.focus();
+    }
+    // New fix paths: the recommended card's Approve is brought into the drawer's view (on a laptop the
+    // cards are taller than the drawer), once the drawer has opened.
+    if (tab === "options") {
+      setTimeout(() => {
+        const actions = document.querySelector('#panel-options .option-card[data-recommended="true"] .option-actions');
+        if (actions && body) {
+          const a = actions.getBoundingClientRect();
+          const b = body.getBoundingClientRect();
+          if (a.bottom > b.bottom || a.top < b.top) body.scrollTop += a.bottom - b.bottom + 8;
+        }
+      }, prefersReducedMotion() ? 0 : 280);
+    }
+  }
+  // The person's turn, two Tabs from the top of the page (review finding R15): while options or drafts
+  // wait, a second skip link leads to the recommended option's Approve or the first pending draft's.
+  const skipTurn = document.getElementById("skip-turn");
+  function turnTarget() {
+    const open = (sel) => [...document.querySelectorAll(sel)].find((b) => b.getAttribute("aria-disabled") !== "true" && !b.disabled);
+    const option = open('#panel-options .option-card[data-recommended="true"][data-status=""] [data-action="approve"]')
+      || open('#panel-options .option-card[data-status=""] [data-action="approve"]');
+    if (option) return { tab: "options", el: option, label: "Skip to your decision" };
+    const draft = open('#panel-outbox .action-card[data-status="pending"] [data-action="approve"]');
+    if (draft) return { tab: "outbox", el: draft, label: "Skip to your approval" };
+    return null;
+  }
+  function updateSkipTurn() {
+    if (!skipTurn) return;
+    const target = turnTarget();
+    if (!target && document.activeElement === skipTurn) skipTurn.blur();
+    skipTurn.hidden = !target;
+    if (target) skipTurn.textContent = target.label;
+  }
+  skipTurn?.addEventListener("click", (e) => {
+    e.preventDefault();
+    const target = turnTarget();
+    if (!target) return;
+    showDrawer(target.tab);
+    requestAnimationFrame(() => (turnTarget()?.el || target.el).focus());
+  });
+  // The panels render on the same events; the link follows once they have.
+  for (const type of ["run_start", "options", "option_decision", "action_draft", "action_decision", "state_change", "run_end"]) {
+    bus.on(type, () => setTimeout(updateSkipTurn, 0));
+  }
+
+  // A tab the person opens starts at its top: the drawer keeps one scroll position for all its tabs.
+  for (const t of document.querySelectorAll('#drawer [role="tab"]')) {
+    t.addEventListener("click", () => { const body = document.querySelector("#drawer .drawer-body"); if (body) body.scrollTop = 0; });
+  }
 
   // ---- the data as the exception log stands ---------------------------------------------------------
   function showData() {
@@ -198,10 +266,14 @@ export function initUI() {
     const def = mode === "simulation" ? window.SIM_RUNS?.[scenario?.id] : null;
     const recorded = def?.source === "recorded";
     setState({ simSource: mode === "simulation" ? (recorded ? "recorded" : "authored") : null });
+    // The parameters in effect: this tab's changes for Live, the defaults for Simulation (TECH_NOTES §7).
+    const params = mode === "live" ? liveParams() : PARAMS;
+    const changed = mode === "live" ? changedParams() : [];
     bus.emit("run_start", {
       run_id, mode, entry, title,
       scenario_id: entry === "scenario" ? scenario.id : null,
       tip: tip || null,
+      params: { ...params }, params_changed: changed,
       model: mode === "live" ? model.id : null,
       model_label: mode === "live" ? model.label : null,
       ...(mode === "simulation" ? {
@@ -210,6 +282,11 @@ export function initUI() {
       } : {})
     });
 
+    if (changed.length) {
+      bus.emit("notice", { level: "info", text: `Parameters changed in the Method dialog apply to this run: ${changed.map((c) => `${c.label} ${paramText(c.name, c.value)} (default ${paramText(c.name, c.default)})`).join("; ")}.` });
+    } else if (mode === "simulation" && changedParams().length) {
+      bus.emit("notice", { level: "info", text: "Simulation runs on the method's default parameters, so the scripted run stays valid; your changes in the Method dialog apply to Live runs." });
+    }
     if (mode === "simulation") {
       if (!def) {
         bus.emit("notice", { level: "error", text: `No simulation script found for “${scenario?.title}”. Check that data/sim_runs.js is complete, or run Diagnostics.` });
@@ -220,7 +297,7 @@ export function initUI() {
       player.play(def, { scenario: scenario.id });
       return;
     }
-    agent.run({ entry, tip, modelId: model.id });
+    agent.run({ entry, tip, modelId: model.id, params });
   }
 
   function abort(reason) {

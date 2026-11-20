@@ -1,6 +1,6 @@
 # Data Quality Agent — data sources
 
-Where every value the app shows or checks comes from. GlobalCorp SE and everything in its data are fictional: no client data, no live data and no outside service at run time. What is real is the method around the data: the VAT formats, the check-digit rules, the data-quality dimensions, the exchange rate and the SAP tables the data products stand in for. Each is listed here with its source and the date it was read. Version 0.1.0, 19 November 2026.
+Where every value the app shows or checks comes from. GlobalCorp SE and everything in its data are fictional: no client data, no live data and no outside service at run time. What is real is the method around the data: the VAT formats, the check-digit rules, the data-quality dimensions, the exchange rate and the SAP tables the data products stand in for. Each is listed here with its source and the date it was read. Version 1.0.0, 20 November 2026: the sources are the ones read for version 0.1.0 on 19 November 2026, each with the date in its row; version 1.0.0 added no outside source.
 
 ## 1. The world: what is real and what is invented
 
@@ -87,7 +87,7 @@ The world ships as five data products and one log, standing in for standard view
 
 ## 7. The method's parameters
 
-The fix paths and the financing cost use the parameters in `js/params.js`, the method's defaults (decision D4). They are assumptions, labelled as such wherever they appear, not measurements: a day of work €1,200 at 8 hours; a mass change 0.5 days to set up, 2 minutes per record and 5 days' lead time; a follow-up 0.25 days to prepare, 10 minutes per owner and a 14-day window; a fix at the source 3 days with 20 days' lead time; a cost of capital of 6 % a year, invoices paid on the order's terms; a window of 365 days.
+The fix paths and the financing cost use the parameters in `js/params.js`, the method's defaults (decision D4). They are assumptions, labelled as such wherever they appear, not measurements. The Method dialog can change eleven of them for Live runs, logged and listed in the run's audit export; Simulation always uses the defaults (TECH_NOTES §6). The defaults: a day of work €1,200 at 8 hours; a mass change 0.5 days to set up, 2 minutes per record and 5 days' lead time; a follow-up 0.25 days to prepare, 10 minutes per owner and a 14-day window; a fix at the source 3 days with 20 days' lead time; a cost of capital of 6 % a year, invoices paid on the order's terms; a window of 365 days.
 
 ## 8. What the app does not use
 
