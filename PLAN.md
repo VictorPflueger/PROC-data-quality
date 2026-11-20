@@ -1,6 +1,6 @@
 # Data Quality Agent: build plan
 
-**Status:** Phase 0 plan of 19 November 2026, approved by Victor on 19 November 2026 with the recommended defaults (D1 to D7, N1 to N3) and the corrections B1 and B2 of section 1.6. GitHub Pages is on; the `HYGIENE_TERMS` secret cannot be provided, so CI runs the hygiene suite's generic checks (TECH_NOTES §7.2, M1-08). M1 is built on the branch `m1-shell-world-engine`; TECH_NOTES.md records how it went.
+**Status:** Phase 0 plan of 19 November 2026, approved by Victor on 19 November 2026 with the recommended defaults (D1 to D7, N1 to N3) and the corrections B1 and B2 of section 1.6. GitHub Pages is on; the `HYGIENE_TERMS` secret cannot be provided, so CI runs the hygiene suite's generic checks (TECH_NOTES §9.2, M1-08). M1 was built on the branch `m1-shell-world-engine` and merged; M2 is built on `m2-agent-board-simulation`. TECH_NOTES.md records how each went.
 
 This plan turns the build brief into three milestones. The brief decides what to build; this file decides how, in which order, and how each step is proven. Where the plan departs from the brief or from the sister prototypes, it says so and gives the reason. Figures from the brief appear here unchanged; every other figure in this file was measured in Phase 0 and says how. The brief stays outside the repository.
 

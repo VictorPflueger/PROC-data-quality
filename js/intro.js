@@ -51,7 +51,8 @@ export function productionPath() {
 }
 
 /** Opens the intro window. Resolves when it closes. */
-export function openIntro() {
+/** The intro window. With onStart it offers to start the agent (not during a run: then it only explains). */
+export function openIntro({ startLabel = "", onStart = null } = {}) {
   return new Promise((resolve) => {
     let modal;
     const steps = h("ol", { class: "vc-stepper intro-steps" }, STEPS.map((s, i) =>
@@ -75,11 +76,17 @@ export function openIntro() {
         productionPath(),
         h("p", { class: "intro-note" }, "GlobalCorp SE, its suppliers, people, orders and figures are fictional: no client data.")
       ],
-      footer: [
-        h("span", { class: "dialog-note" }, "Agent runs arrive in version 0.2. Diagnostics checks the data and the rules today."),
-        h("button", { class: "vc-button", type: "button", autofocus: true, on: { click: () => modal.close(null) } }, icon("check", 18), "Close")
-      ],
-      onClose: () => { markIntroSeen(); resolve(null); }
+      footer: onStart
+        ? [
+          h("span", { class: "dialog-note" }, "Simulation needs no key. Live mode runs on your own Claude API key."),
+          h("button", { class: "vc-button vc-button--outline", type: "button", on: { click: () => modal.close(null) } }, "Close"),
+          h("button", { class: "vc-button", type: "button", id: "btn-intro-start", autofocus: true, on: { click: () => modal.close("start") } }, icon("play", 18), startLabel || "Start agent")
+        ]
+        : [
+          h("span", { class: "dialog-note" }, "The run goes on behind this window."),
+          h("button", { class: "vc-button", type: "button", autofocus: true, on: { click: () => modal.close(null) } }, icon("check", 18), "Close")
+        ],
+      onClose: (r) => { markIntroSeen(); resolve(r); if (r === "start") onStart?.(); }
     });
   });
 }

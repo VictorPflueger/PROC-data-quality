@@ -4,7 +4,8 @@
 // next to this repository or named by PARITY_REF); every check of js/world_check.js passes, including
 // the six scenarios against the frozen reference figures, the recorded clean spend share, the VAT IDs
 // failing their check digits and a log that agrees with the data; and each of those checks fails on a
-// world planted with the fault it looks for.
+// world planted with the fault it looks for. The six simulation scripts pass the live guardrails along
+// every decision path (AC-13), and the script checker catches each fault planted in a copy of a script.
 // Usage: node tests/world.mjs
 import fs from "node:fs";
 import os from "node:os";
@@ -15,6 +16,7 @@ import { APP_ROOT } from "./lib/harness.mjs";
 import { checkWorld } from "../js/world_check.js";
 import { ACCOUNTS } from "../tools/globalcorp_base.mjs";
 import { passesCheckDigit } from "../js/vat_check.js";
+import { checkScripts, checkScript, runOnce } from "../js/sim_check.js";
 
 const failures = [];
 const notes = [];
@@ -107,6 +109,58 @@ const fails = (world, name) => !checkWorld(world, SCENARIOS, REFERENCE_CASES).ch
   const w = clone();
   for (const l of w.po_lines.filter((x) => x.created_by === "U190" && x.payment_terms_days === 14)) l.payment_terms_days = 60;
   check(fails(w, "Scenario SC-EARLY-PAY"), "control: with the agreed terms on the profile's orders, scenario 2 breaks");
+}
+
+// 5. The simulation scripts (AC-13): every script passes the live guardrails along every decision
+// path, and the script checker catches each fault planted in a copy of a script.
+{
+  const { SIM_RUNS } = load(path.join(APP_ROOT, "data", "sim_runs.js"));
+  const all = await checkScripts(WORLD, SIM_RUNS, { scenarios: SCENARIOS });
+  for (const r of all.results) check(r.ok, `script ${r.id}: ${r.runs.length} decision paths pass the live guardrails${r.ok ? "" : ` (${[...r.problems, ...r.runs.filter((x) => !x.ok).map((x) => `${x.plan}: ${x.problems.join("; ")}`)].join(" | ").slice(0, 300)})`}`);
+  check(Object.keys(SIM_RUNS).length === 6 && Object.values(SIM_RUNS).every((x) => x.source === "authored"), "six scripts, each marked authored");
+  const copy = (id) => JSON.parse(JSON.stringify(SIM_RUNS[id]));
+  const approveRecommended = (o) => [{ options_seq: o.options_seq, option_id: o.recommended, decision: "approved" }];
+  const caught = async (what, script, pattern, { full = false } = {}) => {
+    const r = full ? await checkScript(WORLD, script, { scenarios: SCENARIOS }) : await runOnce(WORLD, script, { decide: approveRecommended });
+    const text = full ? [...r.problems, ...r.runs.flatMap((x) => x.problems)].join(" | ") : r.problems.join(" | ");
+    check(!r.ok && pattern.test(text), `script control: ${what} is caught${r.ok ? " (NOT caught)" : pattern.test(text) ? "" : ` (caught differently: ${text.slice(0, 160)})`}`);
+  };
+  let s = copy("SC-PUNCHOUT");
+  s.steps = s.steps.filter((x) => !(x.tool === "erp_get_record" && x.input.product === "po_line"));
+  await caught("an alert before three of the case's records were read", s, /records read with erp_get_record/);
+  s = copy("SC-PUNCHOUT");
+  s.steps = s.steps.filter((x) => !(x.tool === "erp_get_record" && x.input.product === "contract"));
+  await caught("a DQ-01 alert without the covering contract read", s, /covering contract/);
+  s = copy("SC-ONBOARDING");
+  for (const x of s.steps) if (x.input && x.input.group === "self-registration portal") x.input.group = "migrated";
+  await caught("an alert on a group holding less than half of its base", s, /less than half/);
+  s = copy("SC-REQUESTER");
+  s.steps.find((x) => x.tool === "ui_propose_options").input.options[0].path = "A";
+  await caught("an option that is not applicable", s, /Not applicable/);
+  s = copy("SC-PUNCHOUT");
+  s.steps.find((x) => x.tool === "ui_report_alert").input.summary = "The punch-out lines are worth €30,000 and the report cannot see them.";
+  await caught("an amount no tool returned, typed into an alert", s, /Figure audit/);
+  s = copy("SC-EARLY-PAY");
+  s.steps.find((x) => x.tool === "ui_report_alert").input.title = "Paying early on {{grp.nowhere}}";
+  await caught("a placeholder that resolves to nothing", s, /unresolved placeholder/);
+  s = copy("SC-UNCLASSIFIED");
+  s.steps.find((x) => x.tool === "dq_classify").input.items[0].words = ["drill press"];
+  await caught("an AI suggestion resting on words not in the short text", s, /no pending AI suggestion/);
+  s = copy("SC-UNCLASSIFIED");
+  s.steps.find((x) => x.tool === "dq_classify").input.items[1].group_code = "MRO-BEARINGS";
+  await caught("an AI suggestion with an unknown material-group code", s, /no pending AI suggestion/);
+  s = copy("SC-DUPLICATE");
+  s.steps.splice(s.steps.findIndex((x) => x.decide), 0, { tool: "ui_draft_action", input: { kind: "follow_up", recipient: "U123", subject: "Early draft", body: "A draft before any decision." } });
+  await caught("a draft before the decision", s, /Drafts follow a decision/);
+  s = copy("SC-REQUESTER");
+  s.steps.splice(3, 0, { say: "There are 26 lines to look at." });
+  await caught("a figure in narration", s, /narration quotes figures/, { full: true });
+  s = copy("SC-ONBOARDING");
+  for (const x of s.steps) if (x.kind === "revision") delete x.kind;
+  await caught("a script without a visible revision", s, /no visible revision/, { full: true });
+  s = copy("SC-PUNCHOUT");
+  s.steps = s.steps.filter((x) => !(x.tool === "dq_scan"));
+  await caught("grouping without a scan in the run", s, /Only exceptions a dq_scan of this run returned/);
 }
 
 for (const n of notes) console.log(n.startsWith("SKIP") ? n : `PASS  ${n}`);

@@ -1,0 +1,72 @@
+/* Data Quality Agent — the agent's own pieces on top of the shared shell: the console's plain sentence
+ * per tool call (as in the Timetable Translator), the case card, the review of AI-suggested values,
+ * and the details of the fix-path cards. Colours are Vici's semantic tokens in the sister apps'
+ * grammar: lilac (feature) is the AI's voice, merlot (accent) the person in charge, fjord (info) the
+ * checking, danger, warning and success the state of the data, always with a word or a mark. */
+
+/* ---- the console: a tool call reads as one plain sentence for the audience; the tool's own name,
+ *      arguments and result wait one click away under Details (js/console.js) ---------------------- */
+.entry .tool-plain { font-weight: 600; color: var(--vc-text); line-height: 1.35; }
+.entry[data-plain="true"] .entry-body { display: grid; grid-template-columns: minmax(0, 1fr) auto; column-gap: 8px; align-items: start; }
+.entry[data-plain="true"] .tool-plain { padding-top: 9px; }
+.entry[data-plain="true"] .result { display: contents; }
+.entry[data-plain="true"] .result-toggle { margin-left: 0; color: var(--vc-text-subtle); font-size: var(--fs-xs); }
+.entry[data-plain="true"] .tool-detail, .entry[data-plain="true"] .result-body { grid-column: 1 / -1; }
+.entry[data-plain="true"] .tool-detail { display: none; padding: 0 0 4px; }
+.entry[data-plain="true"] .result[data-open="true"] .tool-detail { display: grid; gap: 2px; }
+.entry[data-plain="true"] .tool-detail .tool-name { font-weight: 500; color: var(--vc-text-muted); font-size: 0.84em; }
+.entry[data-plain="true"] .tool-detail .tool-args { font-size: 0.8em; color: var(--vc-text-subtle); }
+.entry[data-plain="true"] .tool-detail .result-summary { font-size: var(--vc-font-size-sm); color: var(--vc-text-muted); }
+.entry[data-plain="true"][data-failed="true"] .tool-plain { color: var(--vc-danger-text); }
+.entry[data-discarded="true"] { opacity: 0.55; }
+
+/* The run facts and the report, one click away like a reasoning summary. */
+details.run-facts { margin-top: 0; }
+.report-full > summary, .run-facts > summary {
+  display: inline-flex; align-items: center; gap: 6px; min-height: 40px; cursor: pointer; list-style: none;
+  color: var(--vc-text-subtle); font-size: var(--vc-font-size-sm);
+}
+.report-full > summary::-webkit-details-marker, .run-facts > summary::-webkit-details-marker { display: none; }
+.report-full[open] > summary .vc-icon, .run-facts[open] > summary .vc-icon { transform: rotate(90deg); }
+.run-facts > p { margin: 0 0 4px; }
+.entry .seed { margin-top: 4px; color: var(--vc-text-muted); }
+
+/* ---- the case card: the verified alert with the engine's figures --------------------------------- */
+.case-card .alert-sev { display: flex; flex-wrap: wrap; align-items: center; gap: 4px 8px; }
+.case-card .case-cause, .case-card .case-fix, .case-card .case-summary { margin: 4px 0 0; }
+.case-figures { display: grid; grid-template-columns: auto minmax(0, 1fr); gap: 2px 12px; margin: 8px 0 4px; font-size: var(--vc-font-size-sm); }
+.case-figures dt { font-weight: 600; }
+.case-figures dd { margin: 0; }
+.case-ai { display: flex; justify-content: flex-end; margin-top: 4px; }
+
+/* ---- the review of AI-suggested values (Your confirmation) ---------------------------------------- */
+.review-note { margin: 0 0 10px; }
+.review-bulk { display: flex; flex-wrap: wrap; align-items: center; gap: 8px; margin: 2px 0 10px; }
+.review-count { font-weight: 700; margin-right: auto; color: var(--vc-text); }
+.review-wrap { max-height: 52vh; overflow-y: auto; }
+.review-table th, .review-table td { vertical-align: top; }
+.review-line { font-family: var(--vc-font-mono); font-weight: 600; white-space: nowrap; }
+.review-text { min-width: 200px; }
+.review-mark { background: var(--vc-feature-bg); color: var(--vc-feature-text); box-shadow: inset 0 -2px 0 var(--vc-feature-solid); padding: 0 1px; }
+.review-group-name { display: block; margin-top: 2px; font-size: var(--fs-xs); color: var(--vc-text-muted); }
+.review-word { display: inline-block; margin: 0 4px 3px 0; padding: 0 6px; border: 1px solid var(--vc-feature-border); background: var(--vc-feature-bg); color: var(--vc-feature-text); font-size: var(--fs-xs); font-weight: 600; }
+.review-buttons { display: flex; flex-wrap: wrap; gap: 6px; }
+.review-table tr[data-decision="approved"] > th { box-shadow: inset 3px 0 0 var(--vc-success-solid); }
+.review-table tr[data-decision="rejected"] > th { box-shadow: inset 3px 0 0 var(--vc-border-strong); }
+.review-table tr[data-decision="rejected"] .review-text, .review-table tr[data-decision="rejected"] .review-words { color: var(--vc-text-muted); }
+.review-status { margin: 0 auto 0 0; font-size: var(--vc-font-size-sm); color: var(--vc-text-muted); }
+.review-confidence .vc-tag { white-space: nowrap; }
+
+/* ---- the fix-path cards' details --------------------------------------------------------------- */
+.options-case { color: var(--vc-text); }
+.options-note { font-size: var(--fs-xs); }
+.option-kind { margin: 0; color: var(--vc-text-muted); font-size: var(--fs-xs); }
+.option-fig-note { margin: 0 0 6px; color: var(--vc-text-muted); font-size: var(--fs-xs); }
+.option-reason-field { margin: 6px 0 4px; }
+.option-reason { min-height: 56px; width: 100%; }
+
+/* ---- the console keeps to its panel ----------------------------------------------------------------
+ * On a 1280 × 720 screen with the drawer open, the console's head, rail and SIMULATION tape can be
+ * taller than the panel; what does not fit is clipped instead of painting over, and catching the
+ * clicks of, the drawer's bar below it. */
+.console-panel { overflow: hidden; }

@@ -1,63 +1,85 @@
-# Gates: M1 shell, world and engine (v0.1.0)
+# Gates: M2 agent, board and Simulation (v0.2.0)
 
-Scope: the shared shell with its two adapted modules, the fictional world with its builder and checker, the rule engine with reconciliation, clean spend, financing cost, history and fix paths, the figure audit, the data contracts with their validator, a first page and CI, each proven against the acceptance criteria AC-01 to AC-07 of the build plan. Every check runs from the repository root with Node 22. The browser checks need Playwright (see tests/README.md), the parity check a Rebate Hunter checkout next to this folder, and the hygiene check the private term list next to it.
+OWNS: index.html, css/**, js/**, data/**, tools/**, tests/**, .github/**, README.md, DESIGN.md, TECH_NOTES.md, DATA_SOURCES.md, REVIEW.md, GATES.md
 
-- [x] G1: AC-01, the engine reproduces D1 and D2 on the fixtures: every exception with its rule, record, routed-to person, spend, unpaid flag and financing cost within 1e-9 of the exact fractions, every total and every display string
-  CHECK: node tests/engine.mjs D1 D2
-  EXPECT: ENGINE OK: D1 D2
-  EVIDENCE: automatic-evidence=v1; definition-sha256=8c6c5fb1909f6e85c1059472da5a62a7370a176259e1c961a5bcd65a4352fe9d; exit=0; EXPECT=matched; output-sha256=1b1498ccb69c1246efee7d4eda3df06a0881f115a4b45f09eb107104d06c1cac; output-bytes=73; shell=/bin/sh; cwd=/home/claude/proc-data-quality; path=14bdffb0e8ca/16 entries
+Scope: the live agent with all 17 tools and its guardrails in code, the board's Rules and People views with the weekly cohorts, the review dialog, options, outbox and report, the recorder, the six scenarios as authored simulations, Live sweep and Custom what-if, proven against acceptance criteria AC-08 to AC-15 of the brief; AC-20 is Victor's live run with his own key. Commands run from the repository root with Node.js 22, Playwright with Chromium (PLAYWRIGHT_MODULE or NODE_PATH, CHROME_PATH), a Rebate Hunter checkout next to the repository and the private term list next to it. No check calls the real API: the live suites run against the scripted stand-in in tests/lib/fake-claude.mjs.
 
-- [x] G2: AC-02, history and reconciliation reproduce D3 (closure rates, 14-day shares, inflows, the first scan's still-routed, closed-by-re-scan and new entries, the projection) and the fix-path engine reproduces D4 with its not-applicable, no-history and integer-floor cases
-  CHECK: node tests/engine.mjs D3 D4
-  EXPECT: ENGINE OK: D3 D4
-  EVIDENCE: automatic-evidence=v1; definition-sha256=c8762e547febfab02ae5ac0ff9767b830921b79319b2103799dd4eb6c5e06063; exit=0; EXPECT=matched; output-sha256=ae14340c3fc1bf00c4a5c9baea28d48407166df0a3d34ae77d61593a34ce3e59; output-bytes=71; shell=/bin/sh; cwd=/home/claude/proc-data-quality; path=14bdffb0e8ca/16 entries
+- [x] G1: AC-08 the key is requested only for Live, checked with GET /v1/models, never appears in local storage, exports, the audit log, recordings or the console; Forget key removes it; the key dialog refuses to work inside a frame
+  CHECK: node tests/live.mjs key
+  EXPECT: LIVE OK: key
+  EVIDENCE: automatic-evidence=v1; definition-sha256=ad1b2f5817c02a2259c502250040e6ef9307a0088d558e4ef46154873e9fdabb; exit=0; EXPECT=matched; output-sha256=d90245d5992a18f5388c45d74155d663d862fda3d4e71c1c10b07589bdfb9068; output-bytes=115; shell=/bin/sh; cwd=/home/claude/proc-data-quality; path=14bdffb0e8ca/16 entries
 
-- [x] G3: AC-03, the VAT format rule accepts one and rejects one example for each country of the method plus Greece, and the rule's code never computes a check digit
-  CHECK: node tests/vat.mjs
-  EXPECT: VAT OK
-  EVIDENCE: automatic-evidence=v1; definition-sha256=76a9c0a5c4a1660bcfdf66d3710a4a9b490f669c323556bc96817f32a7a7c681; exit=0; EXPECT=matched; output-sha256=b7409f0bb693d9d5a166b40f2fe8573a8765cce3c5d67619d536630a2b9b39af; output-bytes=1264; shell=/bin/sh; cwd=/home/claude/proc-data-quality; path=14bdffb0e8ca/16 entries
+- [x] G2: AC-09 against the stand-in, a verified alert is refused without a named dq_group group of at least half its base or without three records read; options outside the latest dq_fix_paths call, a stale decision, a draft the fix path does not allow and a report before the outbox is decided are refused with a Guardrail line; an input that breaks its tool's schema is refused
+  CHECK: node tests/live.mjs guards
+  EXPECT: LIVE OK: guards
+  EVIDENCE: automatic-evidence=v1; definition-sha256=9d8f3224882fd385aff6c70bd695e60a069e7f69e28fa0a405f80b4f03c0816b; exit=0; EXPECT=matched; output-sha256=8bcd79c9f2ab9e6a89c6512a2b84717bb3ad71dd670db637ee8b4defe3e79f0c; output-bytes=100; shell=/bin/sh; cwd=/home/claude/proc-data-quality; path=14bdffb0e8ca/16 entries
 
-- [x] G4: AC-04, the figure audit returns the expected result and the offending tokens for F01 to F15
-  CHECK: node tests/audit.mjs
-  EXPECT: AUDIT OK
-  EVIDENCE: automatic-evidence=v1; definition-sha256=46931aeef80f1d79649d01ee142bc5c432fe49c960d9d7d154e6c1823d585221; exit=0; EXPECT=matched; output-sha256=682b4ec7419676d7ed028063be281936b982cd695a3cf8676ce42b34d1130cf0; output-bytes=1312; shell=/bin/sh; cwd=/home/claude/proc-data-quality; path=14bdffb0e8ca/16 entries
+- [x] G3: AC-10 the review dialog shows Your confirmation in merlot on the furthest step reached and the rail never moves back; a suggested group with an unknown code or words not in the short text is refused; unreviewed suggestions never count in a fix path and approved ones do
+  CHECK: node tests/live.mjs review
+  EXPECT: LIVE OK: review
+  EVIDENCE: automatic-evidence=v1; definition-sha256=f3ab80b75820cb532607452d0e8d13435c6e4dbad25551323f59b8c0ce797bac; exit=0; EXPECT=matched; output-sha256=5b9e996b38b4eafe7b8201be40e8a3a1cdb82f97b514e70478f776e94fd7cbd6; output-bytes=100; shell=/bin/sh; cwd=/home/claude/proc-data-quality; path=14bdffb0e8ca/16 entries
 
-- [x] G5: AC-05, the world builder writes the same bytes twice and data/world.js is its output; the shared base keeps one account per duplicate-name group; every scenario's case appears as planted and equals its frozen reference figures; the whole world's clean spend share is recorded; no VAT ID passes a published check digit; the log agrees with the data
+- [x] G4: AC-11 a run never starts a 41st model call and starts none once €3 is spent; the cost meter equals usage times price to within 1e-9
+  CHECK: node tests/live.mjs caps
+  EXPECT: LIVE OK: caps
+  EVIDENCE: automatic-evidence=v1; definition-sha256=bc8c422b1888eb94bccf11f84e7c4ef880785e71dbc51bbcc464378297170486; exit=0; EXPECT=matched; output-sha256=d1eae7b3260367e81fb52bec374b089a60fc315076307796644a4d4f680c77e4; output-bytes=141; shell=/bin/sh; cwd=/home/claude/proc-data-quality; path=14bdffb0e8ca/16 entries
+
+- [x] G5: AC-12 each of the six scenarios plays offline without a key, with the SIMULATION tape and the engine's figures, along three decision paths (approve the recommendation; reject one and approve another; accept the risk), and scenario 3's review holds Your confirmation on Check
+  CHECK: node tests/sims.mjs
+  EXPECT: SIMS OK: 6 scenarios, 18 runs
+  EVIDENCE: automatic-evidence=v1; definition-sha256=e0eb32377f879281b3a9ab7602d0d603a26963e2aa4b2f77b8d723b07591172f; exit=0; EXPECT=matched; output-sha256=a62f0c9517e2ec104196a294f99d5fbb50d4da7ed34393717f850b0d06ae52a2; output-bytes=832; shell=/bin/sh; cwd=/home/claude/proc-data-quality; path=14bdffb0e8ca/16 entries
+
+- [x] G6: AC-13 tools/check_world.mjs passes every simulation script under the live guardrails, along every decision path a script offers
+  CHECK: node tools/check_world.mjs
+  EXPECT: /WORLD CHECK OK[\s\S]*SCRIPTS OK: 6 of 6/
+  EVIDENCE: automatic-evidence=v1; definition-sha256=366017a3440ded636258b6fa4da8ba9fb565edb0d463b0876aab45764eaf3a9e; exit=0; EXPECT=matched; output-sha256=2ce25e60d3a62523660e315f3e0413a9100be723b1c524f021ea07f7fb99fe03; output-bytes=2294; shell=/bin/sh; cwd=/home/claude/proc-data-quality; path=14bdffb0e8ca/16 entries
+
+- [x] G7: AC-13 control: the world suite plants guardrail violations in copies of the scripts and the script checker catches each, while the world's own checks still pass
   CHECK: node tests/world.mjs
   EXPECT: WORLD OK
-  EVIDENCE: automatic-evidence=v1; definition-sha256=6bbf52f45304fe7b7ff95f23bab95a14222b87cf6c9476b2190271b89c579818; exit=0; EXPECT=matched; output-sha256=04af1cf84ee3670db8bcbf0a9eba6324dedf638e27b7d9191059229c7a176356; output-bytes=3230; shell=/bin/sh; cwd=/home/claude/proc-data-quality; path=14bdffb0e8ca/16 entries
+  EVIDENCE: automatic-evidence=v1; definition-sha256=6bbf52f45304fe7b7ff95f23bab95a14222b87cf6c9476b2190271b89c579818; exit=0; EXPECT=matched; output-sha256=c316c05e412216998e81911a190645b3705dd2389666409892c2a979f21a8585; output-bytes=4579; shell=/bin/sh; cwd=/home/claude/proc-data-quality; path=14bdffb0e8ca/16 entries
 
-- [x] G6: AC-06, the shared shell matches Rebate Hunter's main with exactly js/handover.js and js/progress.js adapted, both listed in REVIEW.md, and vici/ byte for byte
+- [x] G8: AC-14 the board's cells, people rows and weekly cohorts equal the engine's figures after a scan; every cell opens its exceptions; the table views hold the same numbers; no tile sums spend across exceptions
+  CHECK: node tests/accept.mjs board
+  EXPECT: ACCEPT OK: board
+  EVIDENCE: automatic-evidence=v1; definition-sha256=73238e27f0e2aeb098fff38c2f8be05625b4ffacacfde9c823d9cde93453a3a8; exit=0; EXPECT=matched; output-sha256=d53286a44cb249a43cd6ab929c52ba0d3739a4cde622a7cfacf8643077fd06c6; output-bytes=93; shell=/bin/sh; cwd=/home/claude/proc-data-quality; path=14bdffb0e8ca/16 entries
+
+- [x] G9: AC-15 no tile, card or label reads closed for an exception a re-scan still finds; an approved fix shows approved, re-scan pending and its projection
+  CHECK: node tests/accept.mjs honesty
+  EXPECT: ACCEPT OK: honesty
+  EVIDENCE: automatic-evidence=v1; definition-sha256=a978060ce5613da9ca4382795db4750d382cc2279bfc03fa293ce36479102ac9; exit=0; EXPECT=matched; output-sha256=fef965b4f0b7990d4e42501b16c933e78988de19134c01fca0f12bd450ac065e; output-bytes=97; shell=/bin/sh; cwd=/home/claude/proc-data-quality; path=14bdffb0e8ca/16 entries
+
+- [x] G10: the 17 tools exist with their JSON Schemas, every input is validated, the executors return the engine's figures with stable names, and each guard refuses its fault in Node
+  CHECK: node tests/tools.mjs
+  EXPECT: TOOLS OK
+  EVIDENCE: automatic-evidence=v1; definition-sha256=9739c8e14daae207d1e7671bc5c5eff36945d31d31a2881be336a8f6d2438c2d; exit=0; EXPECT=matched; output-sha256=fae4d69bdb9903bceca97c447131084b247cb1f28a90479c2f358ceb65bf7e59; output-bytes=8190; shell=/bin/sh; cwd=/home/claude/proc-data-quality; path=14bdffb0e8ca/16 entries
+
+- [x] G11: Live sweep and Custom what-if run against the stand-in, and Save run as simulation writes a script marked recorded that the script checker passes and the player replays
+  CHECK: node tests/live.mjs sweep custom recorder
+  EXPECT: LIVE OK: sweep custom recorder
+  EVIDENCE: automatic-evidence=v1; definition-sha256=d6c10898841d8bcc411aee0742e31dd18b0dbc2e1eb30c0e3e9d3fd7d4265629; exit=0; EXPECT=matched; output-sha256=14348111f8a445fc51ca3dd0b2b061e39a2701abdad9a66c0fe3f5bb24fc6c88; output-bytes=229; shell=/bin/sh; cwd=/home/claude/proc-data-quality; path=14bdffb0e8ca/16 entries
+
+- [x] G12: the shared shell still matches Rebate Hunter's main with exactly the two adapted files
   CHECK: node tests/parity.mjs
   EXPECT: PARITY OK
   EVIDENCE: automatic-evidence=v1; definition-sha256=10d22380aaa3cc9a2d73ee4cf421fa8690a48bd5335b8ecbb9e59e1d414e1214; exit=0; EXPECT=matched; output-sha256=7d27c6b25b3376092205d3152bb47cb2e6dc362ca781fb7f4a37b8e160c3052b; output-bytes=122; shell=/bin/sh; cwd=/home/claude/proc-data-quality; path=14bdffb0e8ca/16 entries
 
-- [x] G7: AC-06, the four shared design tests pass unchanged with this app's values: colour pairs in both themes, the page icon, vici/ against its release, and nothing round in the files or on the rendered page in both themes
-  CHECK: node tests/run-all.mjs tokens page-icon vici-files hexagon
-  EXPECT: SUITES PASSED: tokens page-icon vici-files hexagon
-  EVIDENCE: automatic-evidence=v1; definition-sha256=58af3bd2a6d2bbdceab962f9240e9d80b2e5cc304f195eb92233eef418917a5d; exit=0; EXPECT=matched; output-sha256=ab523f3538ef00479aa07880ace420351b14ef5f04c4b761c109b26bc755b796; output-bytes=25963; shell=/bin/sh; cwd=/home/claude/proc-data-quality; path=14bdffb0e8ca/16 entries
-
-- [x] G8: AC-07, the page's security policy is exactly the plan's, nothing is loaded from another host, no inline script or style exists, and every storage key starts with dq. except vc-theme
+- [x] G13: the security policy and storage rules hold for every new module (AC-07 kept)
   CHECK: node tests/policy.mjs
   EXPECT: POLICY OK
-  EVIDENCE: automatic-evidence=v1; definition-sha256=189d84abec29c153f165920ce49463395c954658297752a2c80ff5a1f18a1492; exit=0; EXPECT=matched; output-sha256=1a04e250d0331c6778435f8371d7ed8e1152b4cd4d50c7275dbe5bf00e61ff4f; output-bytes=1600; shell=/bin/sh; cwd=/home/claude/proc-data-quality; path=14bdffb0e8ca/16 entries
+  EVIDENCE: automatic-evidence=v1; definition-sha256=189d84abec29c153f165920ce49463395c954658297752a2c80ff5a1f18a1492; exit=0; EXPECT=matched; output-sha256=bd1234f936f9fa7a12350cc20c94282868f7886c6f9803aebe134059ab424e73; output-bytes=1600; shell=/bin/sh; cwd=/home/claude/proc-data-quality; path=14bdffb0e8ca/16 entries
 
-- [x] G9: the page boots in Chromium at 1920x1080 and 1280x720 in both themes without page errors, policy violations or outside requests; its header tiles show the engine's figures; its storage holds only dq. keys and vc-theme; Diagnostics' own checks pass
-  CHECK: node tests/smoke.mjs
-  EXPECT: SMOKE OK
-  EVIDENCE: automatic-evidence=v1; definition-sha256=ea5d94eb2ceb5e5e3d47535be064361a756521cc393772c01aa9afa6686a13c7; exit=0; EXPECT=matched; output-sha256=4d8cd66e2e5a57098d034a9e80bb524fae688af33ad5c2c14ab0f7ac1ac0b867; output-bytes=6880; shell=/bin/sh; cwd=/home/claude/proc-data-quality; path=14bdffb0e8ca/16 entries
-
-- [x] G10: the JSON Schemas of the fifteen data contracts accept the fixtures and the world and reject planted violations through the app's own validator; formatting, the streaming client and the cost meter pass their unit tests
-  CHECK: node tests/unit.mjs
-  EXPECT: UNIT OK
-  EVIDENCE: automatic-evidence=v1; definition-sha256=fa1a0ce969cef95437f83b99d758e0590cb1ddeca95c73e0c8eb61df4c273654; exit=0; EXPECT=matched; output-sha256=b656cd46a470f77de9ff4d0fbb218fd578620403edd534249e280691a88773e5; output-bytes=518; shell=/bin/sh; cwd=/home/claude/proc-data-quality; path=14bdffb0e8ca/16 entries
-
-- [x] G11: no file the repository publishes names a private term or carries an e-mail address, checked against the private list next to this folder
+- [x] G14: no published file names a private term or carries an e-mail address
   CHECK: node tests/hygiene.mjs
   EXPECT: HYGIENE OK
-  EVIDENCE: automatic-evidence=v1; definition-sha256=a215c327e9a4010351cbe3499b8936283175fd7fcc573c6b16ce4ff49cc209a1; exit=0; EXPECT=matched; output-sha256=4a68eba12230a0ee12a43cc886517ab76e88fea09a71b9a0945b846a8b456295; output-bytes=126; shell=/bin/sh; cwd=/home/claude/proc-data-quality; path=14bdffb0e8ca/16 entries
+  EVIDENCE: automatic-evidence=v1; definition-sha256=a215c327e9a4010351cbe3499b8936283175fd7fcc573c6b16ce4ff49cc209a1; exit=0; EXPECT=matched; output-sha256=5207887b0e88d7f26fedc75cf1e56a71c5d3f60bb61b042684a11447896d776e; output-bytes=127; shell=/bin/sh; cwd=/home/claude/proc-data-quality; path=14bdffb0e8ca/16 entries
 
-- [x] G12: every suite of tests/run-all.mjs passes in one run, none skipped
+- [x] G15: every suite passes, M1's included
   CHECK: node tests/run-all.mjs
   EXPECT: ALL SUITES PASSED
-  EVIDENCE: automatic-evidence=v1; definition-sha256=44b70cde5d3146c4d6e0f2ec1e50b1fe0c51ec72c748b6d4cc7bce3ddf8692de; exit=0; EXPECT=matched; output-sha256=92186d73d653769fddc39e18ec85567e975fc2ae88870e0e47b45e2a1d1d93b5; output-bytes=42937; shell=/bin/sh; cwd=/home/claude/proc-data-quality; path=14bdffb0e8ca/16 entries
+  EVIDENCE: automatic-evidence=v1; definition-sha256=44b70cde5d3146c4d6e0f2ec1e50b1fe0c51ec72c748b6d4cc7bce3ddf8692de; exit=0; EXPECT=matched; output-sha256=611f38431bfc354ed7d4b7ef28ffddd4fded5c7afb9c25d6bf7849ec933a5edf; output-bytes=58592; shell=/bin/sh; cwd=/home/claude/proc-data-quality; path=14bdffb0e8ca/16 entries
+
+- [ ] G16: AC-20 Victor runs one scenario live with his own key, end to end within the caps, and the audit export shows model, usage and cost
+  EVIDENCE: pending
+
+ABANDON: G16 needs Victor's own Claude API key; this environment has none and the brief says never to ask for one, so the live run is handed to Victor with the steps in the pull request

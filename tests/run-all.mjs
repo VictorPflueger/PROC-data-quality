@@ -13,12 +13,16 @@ const SUITES = [
   { id: "unit", what: "data contracts and validator, formatting, streaming client, retries, cost maths", file: "tests/unit.mjs", browser: false },
   { id: "engine", what: "golden cases D1 to D4: rules, totals, history, reconciliation, projection, fix paths", file: "tests/engine.mjs", browser: false },
   { id: "audit", what: "figure audit: golden cases F01 to F15 and adversarial texts", file: "tests/audit.mjs", browser: false },
+  { id: "tools", what: "the agent's seventeen tools: schemas and limits, figures equal the references, every guardrail", file: "tests/tools.mjs", browser: false },
   { id: "vat", what: "VAT format rule: one passing and one failing example per country, never a check digit", file: "tests/vat.mjs", browser: false },
   { id: "policy", what: "security policy, no outside resources, no inline script or style, storage keys", file: "tests/policy.mjs", browser: false },
   { id: "hygiene", what: "no client, contact or meeting named in any published file", file: "tests/hygiene.mjs", browser: false },
   { id: "parity", what: "shared shell identical to the sister app's, two modules adapted (needs a Rebate Hunter checkout)", file: "tests/parity.mjs", browser: false, optional: true },
   { id: "smoke", what: "the page boots in both themes and two sizes, tiles equal the engine, Diagnostics passes", file: "tests/smoke.mjs", browser: true },
-  { id: "hexagon", what: "nothing round: the app's files, and the rendered app in both themes", file: "tests/hexagon.mjs", browser: true }
+  { id: "sims", what: "the six scenarios in Simulation along three decision paths, offline, with the engine's figures", file: "tests/sims.mjs", browser: true },
+  { id: "live", what: "the live agent against the scripted API stand-in: key, guardrails, review, caps, sweep, custom, recorder", file: "tests/live.mjs", browser: true },
+  { id: "accept", what: "the board equals the engine; nothing reads closed before a re-scan; honesty labels", file: "tests/accept.mjs", browser: true },
+  { id: "hexagon", what: "nothing round: the app's files, and the rendered app in both themes through a run", file: "tests/hexagon.mjs", browser: true }
 ];
 
 const only = process.argv.slice(2);

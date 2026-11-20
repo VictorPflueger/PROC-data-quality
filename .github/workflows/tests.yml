@@ -17,7 +17,7 @@ concurrency:
 jobs:
   node:
     # GitHub cuts job names at 100 characters.
-    name: Node.js suites (design, world, unit, engine, audit, VAT, policy, hygiene, parity)
+    name: Node.js suites (design, world, unit, engine, audit, tools, VAT, policy, hygiene, parity)
     # Pinned image: Playwright 1.56's system dependencies are known to install on Ubuntu 24.04.
     runs-on: ubuntu-24.04
     timeout-minutes: 10
@@ -32,14 +32,14 @@ jobs:
       - run: git clone https://github.com/VictorPflueger/PROC-Rebate-Hunter ../PROC-Rebate-Hunter
       # The hygiene check reads its private term list from the HYGIENE_TERMS secret if the repository
       # has one; without it only the generic checks run (tests/hygiene.mjs).
-      - run: node tests/run-all.mjs tokens page-icon vici-files world unit engine audit vat policy hygiene parity
+      - run: node tests/run-all.mjs tokens page-icon vici-files world unit engine audit tools vat policy hygiene parity
         env:
           HYGIENE_TERMS: ${{ secrets.HYGIENE_TERMS }}
 
   browser:
     name: Browser suites (Playwright, Chromium)
     runs-on: ubuntu-24.04
-    timeout-minutes: 20
+    timeout-minutes: 30
     needs: node
     steps:
       - uses: actions/checkout@v4
@@ -52,7 +52,7 @@ jobs:
           path: ~/.cache/ms-playwright
           key: playwright-1.56.0-chromium-${{ runner.os }}
       - run: npm install -g playwright@1.56.0 && npx playwright install --with-deps chromium
-      - run: NODE_PATH="$(npm root -g)" node tests/run-all.mjs smoke hexagon
+      - run: NODE_PATH="$(npm root -g)" node tests/run-all.mjs smoke sims live accept hexagon
         env:
           DQ_TEST_OUT: ${{ runner.temp }}/data-quality-agent-tests
       - if: always()

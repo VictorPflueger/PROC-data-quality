@@ -6,11 +6,11 @@ This file records what was asked and what was built, how the shared shell stays 
 
 | Milestone | Delivers | Status |
 | --- | --- | --- |
-| M1 Shell, world and engine (v0.1.0) | The shared shell and Vici with two adapted modules; the fifteen rules, reconciliation, clean spend, financing cost, history and fix paths; the figure audit; the data contracts and their validator; the fictional world with its builder and checker; the golden cases as fixtures; a first page; CI | Built in this pull request |
-| M2 Agent, board and Simulation (v0.2.0) | The live agent with its seventeen tools and guardrails, the board's two views and cohorts, the review dialog, options, outbox and report, six scripted runs, Live sweep and Custom what-if | Next |
+| M1 Shell, world and engine (v0.1.0) | The shared shell and Vici with two adapted modules; the fifteen rules, reconciliation, clean spend, financing cost, history and fix paths; the figure audit; the data contracts and their validator; the fictional world with its builder and checker; the golden cases as fixtures; a first page; CI | Merged (pull request 1) |
+| M2 Agent, board and Simulation (v0.2.0) | The live agent with its seventeen tools and guardrails, the board's two views and cohorts, the review dialog, options, outbox and report, the recorder, six scripted runs, Live sweep and Custom what-if | Built in this pull request; AC-20, the live run with Victor's key, is his |
 | M3 Hardening and release (v1.0.0) | Exports, layout, design and accessibility suites, the Method dialog, all documents, the independent review, the website card, Pages live | Later |
 
-Version 0.1.0 shows the page the agent will run on: the header with the closure rate, clean spend and open exceptions as the exception log stands, the control bar (its run controls say that runs arrive in version 0.2), the fifteen rules by data product, the eight weekly cohorts with their table, the console with the agent's plan and the progress rail, the drawer, How it works with the production path, and Diagnostics with the world's checks.
+Version 0.1.0 showed the page the agent runs on. Version 0.2.0 runs it: six scenarios in Simulation and Live, Live sweep and Custom what-if; the console with a plain sentence per tool call and Guardrail lines; the board's honeycomb with each rule's state, its exceptions per cell, the people view and the cohort chart; the review of AI-suggested values; the fix paths next to doing nothing; the outbox; the report; the audit log and Save run as simulation. TECH_NOTES.md sections 7 and 8 say how the agent and the simulations work, section 11 which acceptance criteria are met and how.
 
 ## Part 2. The shared shell
 
@@ -29,6 +29,8 @@ The shell is Rebate Hunter's (`VictorPflueger/PROC-Rebate-Hunter`, commit `73c00
 
 Any other change to a shared file needs Victor's approval first, and then joins this list and the test's list of adapted files.
 
+**Unchanged in version 0.2.0.** The agent, the board, the review, the options, the outbox and the recorder are this app's own modules; the shell's shared files stayed as they were (`tests/parity.mjs`). The app's stylesheet `css/agent.css` refines the shell where this app needs it, among them `overflow: hidden` on the console panel (TECH_NOTES §9.3, M2-10).
+
 **The app's own counterparts** of shared imports: `js/config.js` (this app's name, id `dq`, version, models and prices, caps, exchange rate, storage keys), `js/events.js` (Rebate Hunter's bus and run states, this app's event types) and `js/icons.js` (Vici's icons and Rebate Hunter's drawings, nothing new drawn).
 
 ## Part 3. Findings
@@ -37,4 +39,4 @@ The independent review comes with version 1.0.0 (milestone M3).
 
 ## Part 4. Open points
 
-See `TECH_NOTES.md` §7.3 (open for Victor) and §7.2 (the build decisions of M1).
+See `TECH_NOTES.md` §9.4 (open for Victor), §9.3 (the build decisions of M2) and §9.2 (those of M1).

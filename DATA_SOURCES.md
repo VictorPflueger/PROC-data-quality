@@ -91,4 +91,4 @@ The fix paths and the financing cost use the parameters in `js/params.js`, the m
 
 ## 8. What the app does not use
 
-No client data, no live company data, no web search and no outside service while it runs: the page loads its data from its own `data/` folder, and from version 0.2 talks only to the Claude API, with your key, in Live mode.
+No client data, no live company data, no web search and no outside service while it runs: the page loads its data from its own `data/` folder, and talks only to the Claude API, with your key, in Live mode.
