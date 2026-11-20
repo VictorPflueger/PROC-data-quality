@@ -1,0 +1,724 @@
+{
+  "$comment": "Golden-case fixture of the build plan's section 11, transcribed by a script from the private build brief's tables. Fields the brief's tables leave open are null; no rule reads them. Day 0 is today.",
+  "meta": {
+    "name": "Golden-case fixture",
+    "today": 0,
+    "window_days": 365,
+    "fx_to_eur": {
+      "EUR": 1,
+      "GBP": 1.15
+    },
+    "cost_of_capital": 0.06
+  },
+  "company_codes": [
+    {
+      "id": "1000",
+      "name": "GlobalCorp SE",
+      "city": "Frankfurt am Main",
+      "country": "DE",
+      "currency": "EUR"
+    },
+    {
+      "id": "2000",
+      "name": "GlobalCorp UK Ltd",
+      "city": "Birmingham",
+      "country": "GB",
+      "currency": "GBP"
+    },
+    {
+      "id": "3000",
+      "name": "GlobalCorp France SAS",
+      "city": "Lyon",
+      "country": "FR",
+      "currency": "EUR"
+    }
+  ],
+  "users": [
+    {
+      "id": "U01",
+      "name": null,
+      "role": "requester",
+      "team": null,
+      "company_code": null,
+      "active_until": null,
+      "manager": "U04"
+    },
+    {
+      "id": "U02",
+      "name": null,
+      "role": "requester",
+      "team": null,
+      "company_code": null,
+      "active_until": -60,
+      "manager": "U04"
+    },
+    {
+      "id": "U03",
+      "name": null,
+      "role": "buyer",
+      "team": null,
+      "company_code": null,
+      "active_until": null,
+      "manager": "U04"
+    },
+    {
+      "id": "U04",
+      "name": null,
+      "role": "manager",
+      "team": null,
+      "company_code": null,
+      "active_until": null,
+      "manager": "U10"
+    },
+    {
+      "id": "U05",
+      "name": null,
+      "role": "buyer",
+      "team": null,
+      "company_code": null,
+      "active_until": -3,
+      "manager": "U10"
+    },
+    {
+      "id": "U06",
+      "name": null,
+      "role": "contract owner",
+      "team": null,
+      "company_code": null,
+      "active_until": -30,
+      "manager": "U10"
+    },
+    {
+      "id": "U07",
+      "name": null,
+      "role": "supplier master steward",
+      "team": null,
+      "company_code": null,
+      "active_until": null,
+      "manager": "U10"
+    },
+    {
+      "id": "U08",
+      "name": null,
+      "role": "material master steward",
+      "team": null,
+      "company_code": null,
+      "active_until": null,
+      "manager": "U10"
+    },
+    {
+      "id": "U09",
+      "name": null,
+      "role": "requester",
+      "team": null,
+      "company_code": null,
+      "active_until": null,
+      "manager": "U10"
+    },
+    {
+      "id": "U10",
+      "name": null,
+      "role": "procurement lead",
+      "team": null,
+      "company_code": null,
+      "active_until": null,
+      "manager": null
+    },
+    {
+      "id": "U11",
+      "name": null,
+      "role": "buyer",
+      "team": null,
+      "company_code": null,
+      "active_until": null,
+      "manager": "U10"
+    },
+    {
+      "id": "U12",
+      "name": null,
+      "role": "requester",
+      "team": null,
+      "company_code": null,
+      "active_until": null,
+      "manager": "U11"
+    }
+  ],
+  "suppliers": [
+    {
+      "id": "S1",
+      "name": "Alpha Tools GmbH",
+      "country": "DE",
+      "city": null,
+      "currency": null,
+      "category": null,
+      "vat_id": "DE123456789",
+      "bank": {
+        "country": "DE",
+        "last4": null
+      },
+      "payment_terms": {
+        "1000": 60
+      },
+      "block_from": null,
+      "created_day": null,
+      "onboarding_channel": null
+    },
+    {
+      "id": "S2",
+      "name": "Beta Lab Supplies SARL",
+      "country": "FR",
+      "city": null,
+      "currency": null,
+      "category": null,
+      "vat_id": "FR12345678901",
+      "bank": {
+        "country": "FR",
+        "last4": null
+      },
+      "payment_terms": {
+        "3000": 45
+      },
+      "block_from": null,
+      "created_day": null,
+      "onboarding_channel": null
+    },
+    {
+      "id": "S3",
+      "name": "Gamma Packaging Ltd",
+      "country": "GB",
+      "city": null,
+      "currency": null,
+      "category": null,
+      "vat_id": "GB123456789",
+      "bank": null,
+      "payment_terms": {
+        "2000": 30
+      },
+      "block_from": null,
+      "created_day": null,
+      "onboarding_channel": null
+    },
+    {
+      "id": "S4",
+      "name": "Delta Services AG",
+      "country": "DE",
+      "city": null,
+      "currency": null,
+      "category": null,
+      "vat_id": null,
+      "bank": {
+        "country": "CH",
+        "last4": null
+      },
+      "payment_terms": {
+        "1000": 30
+      },
+      "block_from": null,
+      "created_day": null,
+      "onboarding_channel": null
+    },
+    {
+      "id": "S5",
+      "name": "Alpha-Tools GmbH",
+      "country": "DE",
+      "city": null,
+      "currency": null,
+      "category": null,
+      "vat_id": "DE123456789",
+      "bank": {
+        "country": "DE",
+        "last4": null
+      },
+      "payment_terms": {
+        "1000": 60
+      },
+      "block_from": -20,
+      "created_day": null,
+      "onboarding_channel": null
+    },
+    {
+      "id": "S6",
+      "name": "Epsilon Chemicals BV",
+      "country": "NL",
+      "city": null,
+      "currency": null,
+      "category": null,
+      "vat_id": "NL12345678",
+      "bank": {
+        "country": "NL",
+        "last4": null
+      },
+      "payment_terms": {
+        "1000": 30
+      },
+      "block_from": null,
+      "created_day": null,
+      "onboarding_channel": null
+    },
+    {
+      "id": "S7",
+      "name": "Zeta Office Supplies GmbH",
+      "country": "DE",
+      "city": null,
+      "currency": null,
+      "category": null,
+      "vat_id": "DE987654321",
+      "bank": {
+        "country": "DE",
+        "last4": null
+      },
+      "payment_terms": {
+        "1000": 30
+      },
+      "block_from": null,
+      "created_day": null,
+      "onboarding_channel": null
+    }
+  ],
+  "materials": [
+    {
+      "id": "M1",
+      "description": "Nitrile gloves, size L, box of 100",
+      "material_group": "MRO-PPE",
+      "base_unit": null
+    },
+    {
+      "id": "M2",
+      "description": "Torque wrench 20–100 Nm",
+      "material_group": "MRO-TOOLS",
+      "base_unit": null
+    },
+    {
+      "id": "M3",
+      "description": "Pipette tips 200 µl, rack of 96",
+      "material_group": null,
+      "base_unit": null
+    },
+    {
+      "id": "M4",
+      "description": "Copy paper A4, 500 sheets",
+      "material_group": "OFFICE",
+      "base_unit": null
+    }
+  ],
+  "contracts": [
+    {
+      "id": "K1",
+      "supplier": "S1",
+      "company_code": "1000",
+      "material_group": "MRO-TOOLS",
+      "valid_from": -300,
+      "valid_to": 65,
+      "payment_terms_days": 60,
+      "owner": "U03"
+    },
+    {
+      "id": "K2",
+      "supplier": "S2",
+      "company_code": "3000",
+      "material_group": "LAB-CONS",
+      "valid_from": -400,
+      "valid_to": -10,
+      "payment_terms_days": 45,
+      "owner": "U06"
+    }
+  ],
+  "po_lines": [
+    {
+      "id": "L01",
+      "po": "4500000101",
+      "item": 10,
+      "company_code": "1000",
+      "plant": null,
+      "supplier": "S1",
+      "material": "M2",
+      "short_text": null,
+      "material_group": "MRO-TOOLS",
+      "quantity": null,
+      "unit": null,
+      "value": 12000,
+      "currency": "EUR",
+      "day": -50,
+      "payment_terms_days": 60,
+      "contract": "K1",
+      "requester": "U01",
+      "buyer": "U03",
+      "created_by": null,
+      "channel": null
+    },
+    {
+      "id": "L02",
+      "po": "4500000102",
+      "item": 10,
+      "company_code": "1000",
+      "plant": null,
+      "supplier": "S1",
+      "material": "M2",
+      "short_text": null,
+      "material_group": "MRO-TOOLS",
+      "quantity": null,
+      "unit": null,
+      "value": 8000,
+      "currency": "EUR",
+      "day": -40,
+      "payment_terms_days": 60,
+      "contract": null,
+      "requester": "U01",
+      "buyer": "U03",
+      "created_by": null,
+      "channel": null
+    },
+    {
+      "id": "L03",
+      "po": "4500000103",
+      "item": 10,
+      "company_code": "1000",
+      "plant": null,
+      "supplier": "S1",
+      "material": null,
+      "short_text": null,
+      "material_group": null,
+      "quantity": null,
+      "unit": null,
+      "value": 5000,
+      "currency": "EUR",
+      "day": -30,
+      "payment_terms_days": 30,
+      "contract": null,
+      "requester": null,
+      "buyer": "U03",
+      "created_by": null,
+      "channel": null
+    },
+    {
+      "id": "L04",
+      "po": "4500000104",
+      "item": 10,
+      "company_code": "1000",
+      "plant": null,
+      "supplier": "S5",
+      "material": "M2",
+      "short_text": null,
+      "material_group": "MRO-TOOLS",
+      "quantity": null,
+      "unit": null,
+      "value": 3000,
+      "currency": "EUR",
+      "day": -10,
+      "payment_terms_days": 60,
+      "contract": null,
+      "requester": "U02",
+      "buyer": "U03",
+      "created_by": null,
+      "channel": null
+    },
+    {
+      "id": "L05",
+      "po": "4500000105",
+      "item": 10,
+      "company_code": "3000",
+      "plant": null,
+      "supplier": "S2",
+      "material": "M3",
+      "short_text": null,
+      "material_group": "LAB-CONS",
+      "quantity": null,
+      "unit": null,
+      "value": 4000,
+      "currency": "EUR",
+      "day": -5,
+      "payment_terms_days": null,
+      "contract": "K2",
+      "requester": "U09",
+      "buyer": "U05",
+      "created_by": null,
+      "channel": null
+    },
+    {
+      "id": "L06",
+      "po": "4500000106",
+      "item": 10,
+      "company_code": "1000",
+      "plant": null,
+      "supplier": "S2",
+      "material": "M1",
+      "short_text": null,
+      "material_group": "MRO-PPE",
+      "quantity": null,
+      "unit": null,
+      "value": 2000,
+      "currency": "EUR",
+      "day": -20,
+      "payment_terms_days": 30,
+      "contract": null,
+      "requester": "U01",
+      "buyer": "U03",
+      "created_by": null,
+      "channel": null
+    },
+    {
+      "id": "L07",
+      "po": "4500000107",
+      "item": 10,
+      "company_code": "2000",
+      "plant": null,
+      "supplier": "S3",
+      "material": "M1",
+      "short_text": null,
+      "material_group": "MRO-TOOLS",
+      "quantity": null,
+      "unit": null,
+      "value": 1500,
+      "currency": "GBP",
+      "day": -15,
+      "payment_terms_days": 30,
+      "contract": null,
+      "requester": "U12",
+      "buyer": "U11",
+      "created_by": null,
+      "channel": null
+    },
+    {
+      "id": "L08",
+      "po": "4500000108",
+      "item": 10,
+      "company_code": "3000",
+      "plant": null,
+      "supplier": "S2",
+      "material": "M3",
+      "short_text": null,
+      "material_group": "LAB-CONS",
+      "quantity": null,
+      "unit": null,
+      "value": 6000,
+      "currency": "EUR",
+      "day": -30,
+      "payment_terms_days": 45,
+      "contract": "K2",
+      "requester": "U09",
+      "buyer": "U05",
+      "created_by": null,
+      "channel": null
+    },
+    {
+      "id": "L09",
+      "po": "4500000109",
+      "item": 10,
+      "company_code": "1000",
+      "plant": null,
+      "supplier": "S4",
+      "material": null,
+      "short_text": null,
+      "material_group": "SVC-IT",
+      "quantity": null,
+      "unit": null,
+      "value": 10000,
+      "currency": "EUR",
+      "day": -25,
+      "payment_terms_days": 30,
+      "contract": null,
+      "requester": "U01",
+      "buyer": "U03",
+      "created_by": null,
+      "channel": null
+    },
+    {
+      "id": "L10",
+      "po": "4500000110",
+      "item": 10,
+      "company_code": "1000",
+      "plant": null,
+      "supplier": "S6",
+      "material": null,
+      "short_text": null,
+      "material_group": "CHEM",
+      "quantity": null,
+      "unit": null,
+      "value": 7000,
+      "currency": "EUR",
+      "day": -10,
+      "payment_terms_days": 14,
+      "contract": null,
+      "requester": "U01",
+      "buyer": "U03",
+      "created_by": null,
+      "channel": null
+    },
+    {
+      "id": "L11",
+      "po": "4500000111",
+      "item": 10,
+      "company_code": "1000",
+      "plant": null,
+      "supplier": "S7",
+      "material": "M4",
+      "short_text": null,
+      "material_group": "OFFICE",
+      "quantity": null,
+      "unit": null,
+      "value": 2500,
+      "currency": "EUR",
+      "day": -35,
+      "payment_terms_days": 30,
+      "contract": null,
+      "requester": "U01",
+      "buyer": "U03",
+      "created_by": null,
+      "channel": null
+    },
+    {
+      "id": "L12",
+      "po": "4500000112",
+      "item": 10,
+      "company_code": "1000",
+      "plant": null,
+      "supplier": "S7",
+      "material": "M4",
+      "short_text": null,
+      "material_group": "OFFICE",
+      "quantity": null,
+      "unit": null,
+      "value": 1500,
+      "currency": "EUR",
+      "day": -12,
+      "payment_terms_days": 30,
+      "contract": null,
+      "requester": "U01",
+      "buyer": "U03",
+      "created_by": null,
+      "channel": null
+    }
+  ],
+  "exception_log": [
+    {
+      "id": "H01",
+      "rule": "DQ-01",
+      "record": "L90",
+      "detected_day": -50,
+      "routed_day": -49,
+      "responsible": null,
+      "routed_to": null,
+      "status": "closed",
+      "closed_day": -40,
+      "reason": null,
+      "reopens": null
+    },
+    {
+      "id": "H02",
+      "rule": "DQ-01",
+      "record": "L92",
+      "detected_day": -48,
+      "routed_day": -47,
+      "responsible": null,
+      "routed_to": null,
+      "status": "closed",
+      "closed_day": -20,
+      "reason": null,
+      "reopens": null
+    },
+    {
+      "id": "H03",
+      "rule": "DQ-01",
+      "record": "L01",
+      "detected_day": -45,
+      "routed_day": -44,
+      "responsible": null,
+      "routed_to": null,
+      "status": "routed",
+      "closed_day": null,
+      "reason": null,
+      "reopens": null
+    },
+    {
+      "id": "H04",
+      "rule": "DQ-07",
+      "record": "L93",
+      "detected_day": -40,
+      "routed_day": -39,
+      "responsible": null,
+      "routed_to": null,
+      "status": "closed",
+      "closed_day": -30,
+      "reason": null,
+      "reopens": null
+    },
+    {
+      "id": "H05",
+      "rule": "DQ-07",
+      "record": "L94",
+      "detected_day": -35,
+      "routed_day": -34,
+      "responsible": null,
+      "routed_to": null,
+      "status": "dismissed",
+      "closed_day": -33,
+      "reason": null,
+      "reopens": null
+    },
+    {
+      "id": "H06",
+      "rule": "DQ-02",
+      "record": "L95",
+      "detected_day": -30,
+      "routed_day": -29,
+      "responsible": null,
+      "routed_to": null,
+      "status": "closed",
+      "closed_day": -25,
+      "reason": null,
+      "reopens": null
+    },
+    {
+      "id": "H07",
+      "rule": "DQ-02",
+      "record": "L03",
+      "detected_day": -20,
+      "routed_day": -19,
+      "responsible": null,
+      "routed_to": null,
+      "status": "routed",
+      "closed_day": null,
+      "reason": null,
+      "reopens": null
+    },
+    {
+      "id": "H08",
+      "rule": "DQ-10",
+      "record": "S9",
+      "detected_day": -14,
+      "routed_day": -13,
+      "responsible": null,
+      "routed_to": null,
+      "status": "closed",
+      "closed_day": -2,
+      "reason": null,
+      "reopens": null
+    },
+    {
+      "id": "H09",
+      "rule": "DQ-01",
+      "record": "L02",
+      "detected_day": -10,
+      "routed_day": -9,
+      "responsible": null,
+      "routed_to": null,
+      "status": "routed",
+      "closed_day": null,
+      "reason": null,
+      "reopens": null
+    },
+    {
+      "id": "H10",
+      "rule": "DQ-07",
+      "record": "L96",
+      "detected_day": -70,
+      "routed_day": -69,
+      "responsible": null,
+      "routed_to": null,
+      "status": "closed",
+      "closed_day": -60,
+      "reason": null,
+      "reopens": null
+    }
+  ]
+}
