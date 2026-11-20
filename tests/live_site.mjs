@@ -66,6 +66,8 @@ async function simulationRun() {
     if (cell !== "danger 21") found.push(`rule DQ-07 reads "${cell}"`);
     await page.click('.stepbar .vc-step__button[data-step="4"]');
     await page.click('.opt[data-recommended="true"] [data-action="approve"]');
+    // The key figures redraw on the next animation frame: wait for it before reading them.
+    await page.waitForFunction(() => /^projected/.test(document.querySelector("#kpi-fixed .kpi-note")?.textContent.trim() || ""), null, { timeout: 5000 }).catch(() => {});
     const note = (await page.locator("#kpi-fixed .kpi-note").textContent()).trim();
     if (!/^projected/.test(note)) found.push(`Records fixed reads "${note}"`);
     await page.click('.stepbar .vc-step__button[data-step="5"]');
