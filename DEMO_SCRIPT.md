@@ -5,7 +5,7 @@ The default case, *Paying too early*, in Simulation. Every figure below is the e
 ## Before you start
 
 - Open the live site in a fresh tab, full screen, at 1920 × 1080 or 1280 × 720. *How it works* opens by itself; `?guide=present` opens it straight on the talk track.
-- Leave the guide with **Start**: you are on the tip. Check the clicker or the arrow keys once.
+- Leave the guide with **Start**: you are on the tip. Every step ends with a Next button that names where it leads; the clicker or the right arrow does the same. Check the clicker once.
 - For a live run, have an Anthropic API key with a low spend limit ready. Rehearse in Simulation first: it needs no key and works offline.
 
 ## The five minutes

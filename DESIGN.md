@@ -1,17 +1,18 @@
 # Design
 
-How the screen is built, and why. The page follows Vici, Victor Pflüger's design system (`vici/`), and is written for someone in a customer meeting with no time, background or interest in the machinery.
+How the screen is built, and why. The page follows Vici, Victor Pflüger's design system (`vici/`), and is written for a customer with no time for the machinery.
 
 ## 1. One question per screen
 
-Each step answers one question in its title, in plain words and with the engine's figure in it: *Two rules flag 23 order lines in Birmingham*, *Paying early cost €3,482 last year*. The left column tells the story (title, what the agent said, the facts); the right column shows the evidence (the honeycomb, the case card, the figures). Propose and Prepare use the full width, because the person acts there.
+Each step answers one question in its title, in plain words and with the engine's figure in it: *Two rules flag 23 order lines in Birmingham*, *Paying early cost €3,482 last year*. The left column tells the story; the right column shows the evidence. Propose and Prepare use the full width, because the person acts there.
 
 ## 2. The frame
 
 - **Header.** Name and company on the left; *How it works* and the theme switch; the four key figures top right.
-- **Step bar.** The tip and the five steps, with Back and Next. A step the run has not reached is disabled. Where a person must act, the step says so (*Your review*, *Your decision*, *Your approval*) and its marker turns merlot.
+- **Step bar.** The tip and the five steps, with Back and a secondary Next. A step the run has not reached is disabled. Where a person must act, the step says so (*Your review*, *Your decision*, *Your approval*) and its marker turns merlot.
+- **The next action.** Each step ends where the reading ends, with a button that names where it leads (*Next: find the cause*). Where you must act, a merlot *Your turn* line says what to do and points at the button. After six idle seconds that button pulses.
 - **Stage.** One step at a time, with no page scrolling at 1920 × 1080 or 1280 × 720. Long lists scroll inside their panel.
-- **Footer.** The byline with LinkedIn and website, as Vici specifies, and three short notes: an AI system, a fictional company, nothing ever sent.
+- **Footer.** The byline with LinkedIn and website, and three notes: an AI system, a fictional company, nothing ever sent.
 
 The address follows the presenter (`?case=…&step=…`), so a link opens the same screen.
 
@@ -28,7 +29,7 @@ Vici's tokens only; nothing round (Vici's hexagons replace circles). Each colour
 | Merlot (accent) | Your turn: the step that waits for you, the primary button, Approve |
 | Lilac (AI) | What the AI wrote: the AI tag, hypotheses and revisions |
 
-Colour never carries a meaning alone: each state also has an icon or a word, and the honeycomb's legend names them. `tests/tokens.mjs` checks every pair the page draws for contrast in both themes and reports how far the states stay apart for colour-blind readers.
+Colour never carries a meaning alone: each state also has an icon or a word. `tests/tokens.mjs` checks every pair the page draws for contrast in both themes.
 
 ## 4. The key figures
 
@@ -44,8 +45,8 @@ Four Vici stat tiles, top right, each with a label, a value and a note. Each sta
 
 ## 6. What the page leaves out
 
-Version 2.0.0 cut what a customer audience does not need, to get the first screen to nine controls: the control bar and replay speeds, the timed console, the drawer with its tables and people view, the weekly cohort chart, the Method dialog, Diagnostics, Save run as simulation, Live sweep and the custom what-if. The engine, the seventeen tools, their guardrails, the figure audit, Live mode and the audit log stayed. TECH_NOTES.md §9 records the decision.
+Version 2.0.0 cut what a customer does not need, to get the first screen to nine controls: the control bar, the timed console, the drawer, the people view, the cohort chart, the Method dialog, Diagnostics, the recorder, Live sweep and the custom what-if. The engine, the tools and their guardrails, the figure audit, Live mode and the audit log stayed (TECH_NOTES.md §9).
 
 ## 7. Access and motion
 
-Every control is a native button, select or input, reachable by Tab and labelled. The arrow keys move between steps unless the focus is in a field or a dialog is open. Each step change moves the focus to the step's title, so a screen reader announces it. Reduced motion stops the figure flips and the live pulse; forced colours keep the honeycomb's states readable.
+Every control is a native button, select or input, reachable by Tab and labelled. The arrow keys move between steps unless the focus is in a field or a dialog is open. Each step change moves the focus to the step's title, so a screen reader announces it. Reduced motion stops the figure flips and the live pulse, and turns the nudge into a still ring; forced colours keep the honeycomb's states readable.
