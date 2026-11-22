@@ -38,7 +38,7 @@ DQ-10 checks that a supplier's VAT ID exists, starts with its country's prefix a
 | Switzerland | CHE | 9 digits, printed CHE-123.456.789 with MWST, TVA or IVA | Swiss UID ordinance SR 431.031, Art. 5, and `https://www.ch.ch/en/value-added-tax-number-und-business-identification-number/` | 2026-11-19 | verified |
 | Greece (test case only) | EL | 9 digits | VIES structure table (a) | 2026-11-19 | verified |
 
-(a) The European Commission's VIES FAQ, item 11 (`https://ec.europa.eu/taxation_customs/vies/faq.html`), renders empty without a browser; its structure table was read as the French customs reproduce it: "VIES — Structure des identifiants TVA", `https://www.douane.gouv.fr/sites/default/files/2021-02/02/VIES_Structure_des_identifiants_TVA_DEB_2021.pdf`, February 2021.
+(a) The European Commission's VIES FAQ, item 11 (`https://ec.europa.eu/taxation_customs/vies/faq.html`), renders empty without a browser; its structure table was read as the French customs reproduce it: "VIES: Structure des identifiants TVA", `https://www.douane.gouv.fr/sites/default/files/2021-02/02/VIES_Structure_des_identifiants_TVA_DEB_2021.pdf`, February 2021.
 (b) HMRC's internal manuals on gov.uk, sections VATGPB9400 (VAT Government and Public Bodies) and VATREG12450 (VAT Registration).
 
 **Stricter than a format** (correction B7). The published rules of section 4 add conditions a format check does not make: a German number never starts with 0, GD numbers run from 000 to 499 and HA numbers from 500 to 999. DQ-10 keeps to the format, as the method says; the world's builder and checker apply the full rules.
@@ -81,8 +81,8 @@ The world ships as five data products and one log, standing in for standard view
 | `user_org` | User | user master and organisation |
 | `exception_log` | Exception ever detected | the agent's own store |
 
-- The order item's contract reference: EKPO-KONNR, "Number of Principal Purchase Agreement" — typical source field, not verified.
-- The requester: AFNAM, "Name of Requisitioner/Requester", a 12-character text on the requisition (EBAN) and the order item (EKPO), not a link to a user — typical source field, not verified. SAP note (KBA) 2955651, said to describe that a manually created requisition fills it with the user ID, was not reached. In the world a line's requester holds a user id, and a value that matches no user counts as missing (DQ-04).
+- The order item's contract reference: EKPO-KONNR, "Number of Principal Purchase Agreement": a typical source field, not verified.
+- The requester: AFNAM, "Name of Requisitioner/Requester", a 12-character text on the requisition (EBAN) and the order item (EKPO), not a link to a user; a typical source field, not verified. SAP note (KBA) 2955651, said to describe that a manually created requisition fills it with the user ID, was not reached. In the world a line's requester holds a user id, and a value that matches no user counts as missing (DQ-04).
 - Third-party dictionary mirrors agree on both fields (`https://leanx.eu/sap/table/eban/`, `https://www.se80.co.uk/sap-data-element/?name=afnam`, `https://www.sapdatasheet.org/abap/dtel/konnr.html`, read 2026-11-19); they are not SAP's documentation.
 
 ## 7. The method's parameters

@@ -5,18 +5,18 @@ The default case, *Paying too early*, in Simulation. Every figure below is the e
 ## Before you start
 
 - Open the live site in a fresh tab, full screen, at 1920 × 1080 or 1280 × 720. *How it works* opens by itself; `?guide=present` opens it straight on the talk track.
-- Leave the guide with **Start**: you are on the tip. Every step ends with a Next button that names where it leads; the clicker or the right arrow does the same. Check the clicker once.
+- Leave the guide with **Start**: you are on the tip, and the four figures top right already show what is at stake. **Start the agent** then plays the case: each step stays as long as its words take to read, and Play stops wherever you decide. Space pauses while you talk; the clicker or the right arrow moves on by hand. Check the clicker once.
 - For a live run, have an Anthropic API key with a low spend limit ready. Rehearse in Simulation first: it needs no key and works offline.
 
 ## The five minutes
 
 | Time | Step | Say | Do and watch |
 | --- | --- | --- | --- |
-| 0.5 min | The tip | "Treasury thinks we pay Birmingham's suppliers too early. That one sentence is all the agent gets." | Click **Start the agent** or press the right arrow. |
-| 1 min | Spot | "Two of fifteen rules flag 23 order lines worth €475,350. The oldest flag has waited 62 days without a decision." | Point at the honeycomb, then at *Detection → decision*, top right: the clock runs. |
+| 1 min | The tip | "Treasury thinks we pay Birmingham's suppliers too early. That one sentence is all the agent gets. Top right: €10,293 a year at stake, 23 records, a flag 62 days old." | Point at the four figures, then click **Start the agent**. |
+| 0.5 min | Spot | "Two of fifteen rules flag 23 order lines worth €475,350." | Point at the honeycomb, then at *Detection → decision*: the clock runs. |
 | 1 min | Check | "The agent suspects one supplier, tests it and corrects itself: one shared buying profile created all 23." | The chain shows Hypothesis, Checked and Revised. The case card names the two buyers who must act. |
-| 0.5 min | Calculate | "Paying early cost €3,482 last year. Leave it, and it costs about €10,293 a year." | *Cost avoided* still reads €0, with €10,293 a year at stake below it. |
-| 1 min | Propose | "You decide, not the AI. Path C corrects the 23 lines and fixes the profile for €4,315." | Approve **C**. *Cost avoided* goes to €10,293 a year and €1,374 at once, *Records fixed* to 23 of 23, and the clock stops. |
+| 0.5 min | Calculate | "Paying early cost €3,482 last year. Leave it, and it costs about €10,293 a year." | The engine's figure is the one *At stake a year* showed from the start. |
+| 1 min | Propose | "You decide, not the AI. Path C corrects the 23 lines and fixes the profile for €4,315." | Approve **C**. *At stake a year* strikes through €10,293 and shows what is left, *Records fixed* goes from 0 to 23 of 23, and the clock stops. |
 | 1 min | Prepare | "Two drafts wait for approval, and nothing is ever sent. Run live, this would cost about €0.10." | Approve both drafts; the report appears. Point at *Session cost*. |
 
 ## If something goes wrong

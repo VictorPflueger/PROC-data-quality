@@ -32,6 +32,8 @@ export const COLOUR_PAIRS = [
   ["A key figure that shows what is at stake", "warning-text", "warning-bg", "text"],
   ["A key figure's note on a gain", "text-muted", "success-bg", "text"],
   ["A key figure's note at stake", "text-muted", "warning-bg", "text"],
+  ["A key figure's old value, struck through (vc-stat__was), on a gain", "text-muted", "success-bg", "text"],
+  ["The arrow from a key figure's old value to its new one", "text-subtle", "success-bg", "mark"],
   // Calculate: the money.
   ["Money already spent, on its quiet ground", "text", "bg-subtle", "text"],
   ["Money at stake if nothing changes", "warning-text", "warning-bg", "text"],
@@ -47,10 +49,13 @@ export const COLOUR_PAIRS = [
   ["Your turn: the merlot tag against its callout", "accent", "accent-soft", "mark"],
   ["Your turn: the callout's edge on a panel", "accent", "surface", "mark"],
   ["The step's Next button", "on-accent", "accent", "text"],
+  ["The bar along Next that fills as Play reads the step", "on-accent", "accent", "mark"],
+  ["Beside Next: when Play moves on", "text-muted", "surface", "text"],
+  ["Beside Next: Your move, when the page waits", "accent-text", "surface", "text"],
   ["The step that waits for you: its number", "on-accent", "accent", "text"],
   ["The step on screen: its number", "on-accent-soft", "accent-soft", "text"],
-  // Header and footer tags.
-  ["SIMULATION and Fictional company (plain tags)", "neutral-text", "neutral-bg", "text"],
+  // Header tags.
+  ["SIMULATION (a plain tag)", "neutral-text", "neutral-bg", "text"],
   ["LIVE, on merlot", "on-accent", "accent", "text"],
   ["You are interacting with an AI system", "feature-text", "feature-bg", "text"],
   // The guide's production path.

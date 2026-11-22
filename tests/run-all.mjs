@@ -1,6 +1,7 @@
 // Runs every check in order and prints a summary. The app itself needs none of this.
-// Usage: node tests/run-all.mjs               (all suites)
+// Usage: node tests/run-all.mjs                  (all suites)
 //        node tests/run-all.mjs engine presenter  (only the named suites)
+//        node tests/run-all.mjs --require-vici  (Vici's checks must run: no ViciDesign checkout fails)
 import { spawnSync } from "node:child_process";
 import path from "node:path";
 import { APP_ROOT } from "./lib/harness.mjs";
@@ -9,6 +10,7 @@ const SUITES = [
   { id: "tokens", what: "colour system on Vici's tokens, light and dark: contrast, colour-blind separation", file: "tests/tokens.mjs", browser: false },
   { id: "page-icon", what: "page icon: favicon, header and loading screen, as on the website's card", file: "tests/page-icon.mjs", browser: false },
   { id: "vici-files", what: "vici/ holds exactly the files its README lists, unchanged", file: "tests/vici-files.mjs", browser: false },
+  { id: "vici", what: "Vici's own checks: guide, byline, writing, AI notice; every sentence of six cases on three paths; vici/ byte for byte at the pinned commit", file: "tests/vici.mjs", browser: false, vici: true },
   { id: "world", what: "world builder deterministic, the shared accounts, scenarios against frozen figures, check digits, log", file: "tests/world.mjs", browser: false },
   { id: "unit", what: "data contracts and validator, formatting, streaming client, retries, cost maths", file: "tests/unit.mjs", browser: false },
   { id: "engine", what: "golden cases D1 to D4: rules, totals, history, reconciliation, projection, fix paths", file: "tests/engine.mjs", browser: false },
@@ -18,12 +20,13 @@ const SUITES = [
   { id: "policy", what: "security policy, no outside resources, no inline script or style, storage keys", file: "tests/policy.mjs", browser: false },
   { id: "hygiene", what: "no client, contact or meeting named in any published file", file: "tests/hygiene.mjs", browser: false },
   { id: "docs", what: "the documents complete, their cited sections and named paths real, the live site linked", file: "tests/docs.mjs", browser: false },
-  { id: "presenter", what: "the presenter: steps by click, keys and ?step=; key figures equal the engine; six cases, every decision path, lean, layout", file: "tests/presenter.mjs", browser: true },
+  { id: "presenter", what: "the presenter: Play and Your turn, steps by click, keys and ?step=; key figures answer first and equal the engine; six cases, every decision path, lean, the guide (with Vici's render check), layout", file: "tests/presenter.mjs", browser: true, vici: true },
   { id: "live_ui", what: "Run it live against the scripted API stand-in: key handling, a full run with the measured cost, frame, guardrail, caps", file: "tests/live_ui.mjs", browser: true },
   { id: "hexagon", what: "nothing round: the app's files, and the rendered app in both themes through a run", file: "tests/hexagon.mjs", browser: true }
 ];
 
-const only = process.argv.slice(2);
+const REQUIRE = process.argv.includes("--require-vici");
+const only = process.argv.slice(2).filter((a) => !a.startsWith("--"));
 const unknown = only.filter((id) => !SUITES.some((s) => s.id === id));
 if (unknown.length) {
   console.error(`Unknown suite(s): ${unknown.join(", ")}. Known: ${SUITES.map((s) => s.id).join(", ")}.`);
@@ -49,7 +52,7 @@ const annotate = (s, out) => {
 for (const s of chosen) {
   console.log(`\n=== ${s.id}: ${s.what} ===`);
   const started = Date.now();
-  const r = spawnSync(process.execPath, [path.join(APP_ROOT, s.file), ...(s.args || [])], { cwd: APP_ROOT, stdio: CI ? ["inherit", "pipe", "pipe"] : "inherit", env: process.env, encoding: "utf8", maxBuffer: 256 * 1024 * 1024 });
+  const r = spawnSync(process.execPath, [path.join(APP_ROOT, s.file), ...(s.args || []), ...(s.vici && REQUIRE ? ["--require-vici"] : [])], { cwd: APP_ROOT, stdio: CI ? ["inherit", "pipe", "pipe"] : "inherit", env: process.env, encoding: "utf8", maxBuffer: 256 * 1024 * 1024 });
   if (CI) {
     process.stdout.write(r.stdout || "");
     process.stderr.write(r.stderr || "");

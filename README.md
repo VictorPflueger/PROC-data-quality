@@ -2,7 +2,7 @@
 
 An AI agent for procurement data. It takes a one-sentence tip, finds the records behind it, works out why they are wrong and who can fix them, and has a rule engine cost each way to fix them. A person decides. Nothing is ever sent.
 
-Live site: <https://victorpflueger.github.io/PROC-data-quality/> (GitHub Pages, from `main`), version 2.1.0. GlobalCorp SE and all its data are fictional: no client data. You are interacting with an AI system.
+Live site: <https://victorpflueger.github.io/PROC-data-quality/> (GitHub Pages, from `main`), version 2.2.0. GlobalCorp SE and all its data are fictional: no client data. You are interacting with an AI system.
 
 Built by Victor Pflüger: [LinkedIn](https://www.linkedin.com/in/victorpflueger), [website](https://victorpflueger.github.io/VIP/index.html).
 
@@ -23,19 +23,20 @@ Bad purchasing data costs money, and nobody owns it. An order without its contra
 
 ## The four key figures
 
-They sit top right and move as you step through. The engine computes them, never the AI.
+They sit top right and answer first: before anything runs, they show what is at stake. When your decision moves a figure, its old value stays beside the new one, struck through. The engine computes them, never the AI.
 
 | Figure | What it shows |
 | --- | --- |
-| Cost avoided | The financing cost the approved fix avoids a year; below it, what it avoids at once |
-| Records fixed | The records the approved fix corrects, projected until a re-scan no longer finds them |
+| At stake a year | The financing cost a year if nothing changes; after your decision, what is left |
+| Records fixed | 0 until you decide; then the records the approved fix corrects, projected until a re-scan no longer finds them |
 | Detection → decision | The time from the scan to your decision; below it, how long the oldest of these exceptions has waited |
-| Session cost | What the run costs on Claude: measured in Live, estimated in a simulation |
+| Session cost | What the run costs on Claude: estimated before and during a simulation, measured in Live |
 
 ## Presenting it
 
-- **The guide.** *How it works* opens by itself once per tab. Its last chapter is the five-minute talk track, with the default case's figures filled in from the engine. `?guide=present` opens it on the talk track; `?guide=0` keeps it closed.
-- **Moving.** Each step ends with a Next button that names where it leads; the arrow keys (or a presentation clicker), Back and Next in the bar, or a click on a step do the same. Each step shows at once; where a person decides, a *Your turn* line says what to do.
+- **The guide.** *How it works* opens by itself once per tab. Its last chapter is the five-minute talk track, with the engine's figures filled in. `?guide=present` opens it there; `?guide=0` keeps it closed.
+- **Play.** Start the agent plays the case: each step stays as long as its words take to read (7 to 14 seconds), and Play stops wherever you act. Space pauses and plays; a click on a step, the arrow keys or a clicker pause it. Each step's own button names where it leads.
+- **Your turn.** Wherever a person decides, a *Your turn* callout says what to do and marks the button to press.
 - **Deep links.** `?case=early-pay&step=4` opens a case on its decision. The cases: `early-pay` (the default, Paying too early), `punchout`, `unclassified`, `requester`, `onboarding` and `duplicate`.
 - **The script.** [DEMO_SCRIPT.md](DEMO_SCRIPT.md) has what to say, step by step, and the questions that will come.
 
@@ -71,7 +72,7 @@ The page is static, with no build step and no dependency. Serve the folder, for 
 | `js/estimate.js` | The session-cost estimate of a simulated run |
 | `data/` | The fictional world, the six cases, their frozen reference figures and their scripts |
 | `tools/` | The world's builder and checker |
-| `vici/` | Vici, Victor Pflüger's design system, release 1.0.0 |
+| `vici/` | Vici, Victor Pflüger's design system, copied from its main at the commit `vici/README.md` names |
 
 ## Documents
 

@@ -49,6 +49,18 @@ export function supplierName(world, id) {
 /** "Payment terms too short" for DQ-07. */
 export const ruleName = (id) => ruleById(id)?.name || id;
 
+// The names a viewer reads: on the honeycomb's cells and wherever the agent's words or the report name a
+// rule. Short enough for a cell; the codes (DQ-01 to DQ-15) stay inside the engine and the tools.
+const LABELS = {
+  "DQ-01": "Contract not referenced", "DQ-02": "Material group missing", "DQ-03": "Group differs from master",
+  "DQ-04": "Requester missing", "DQ-05": "Requester had left", "DQ-06": "Payment terms missing",
+  "DQ-07": "Payment terms too short", "DQ-08": "Blocked supplier", "DQ-09": "No terms in company code",
+  "DQ-10": "VAT ID wrong or missing", "DQ-11": "Bank missing or foreign", "DQ-12": "Duplicate supplier",
+  "DQ-13": "Material without group", "DQ-14": "Contract owner gone", "DQ-15": "Contract not valid"
+};
+/** The rule's name as the screen shows it: "Payment terms too short" for DQ-07. */
+export const ruleLabel = (id) => LABELS[id] || ruleName(id);
+
 /** The scope of a scan or grouping in words: "Birmingham", "the Lyon plant", "all data". */
 export function scopeText(world, filters) {
   const parts = [];
@@ -73,6 +85,15 @@ export function plainText(world, text) {
   if (!text) return "";
   const ix = indexOf(world);
   let out = String(text);
+  // A sentence that only gives a place's code ("Birmingham is company code 2000.") says nothing to a
+  // viewer: it goes. Its tail stays where one follows ("Lyon is plant 3010, and a missing …").
+  out = out.replace(/(^|[.!?]\s+|\n)([A-Z][\p{L}-]+(?: [A-Z][\p{L}-]+)*) is (company code|plant) (\d{4})(\.\s*|, and )/gu, (m, lead, place, kind, id, tail) => {
+    const name = placeName(world, kind === "plant" ? "plant" : "company_code", id);
+    if (name !== place) return m;
+    return tail.startsWith(",") ? `${lead}${"\u0000"}` : lead;
+  }).replace(/\u0000(.)/g, (m, c) => c.toUpperCase());
+  // Rule codes become the rule's name.
+  out = out.replace(/\b(?:rule )?(DQ-\d{2})\b/g, (m, id) => (LABELS[id] ? `${m.startsWith("rule ") ? "the rule " : ""}‘${LABELS[id]}’` : m));
   // "(supplier 80001)" after the supplier's own name is noise: drop it.
   out = out.replace(/\s*\(supplier (\d{5})\)/g, (m, id) => (ix.suppliers.has(id) ? "" : m));
   out = out.replace(/\bsupplier (\d{5})\b/g, (m, id) => {

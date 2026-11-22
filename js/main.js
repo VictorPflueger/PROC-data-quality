@@ -31,7 +31,8 @@ async function boot() {
   const { initApp, showBanner } = ui;
   const { redactSecrets } = await import("./keystore.js");
 
-  window.__dq = initApp();
+  setBootStatus("Working out the case…");
+  window.__dq = await initApp();
   installErrorReporting(showBanner, redactSecrets);
   document.documentElement.dataset.boot = "ready";
   hideBoot();

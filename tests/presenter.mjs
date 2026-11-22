@@ -3,27 +3,39 @@
 //   steps    the tip and the five steps by click, the arrow keys, Back and Next and ?step=; each step
 //            shows at once after Start (under 1.5 s); ?step=4 waits for the decision; ?step=5 for the
 //            drafts; ?case= opens another case; each step ends with a Next button that names where it
-//            leads, or says "Your turn" where the person must act, and that action pulses after six idle
-//            seconds (still with reduced motion)
-//   kpis     four key figures in the header, top right, sensible before anything happens; after the
-//            decision they show the engine's figures, the clock stops, and Session cost equals the
-//            estimate of the same run in Node
+//            leads; where the person must act, a Your turn callout says what to do and the action
+//            carries Vici's vc-attention; a paused step's Next gets it after six idle seconds (still,
+//            with reduced motion)
+//   play     Start plays the case: each step fills and says when it moves on, Play goes on by itself,
+//            stops where the person acts and reads on after; an open dialog holds it; Space and a
+//            chosen step pause it; it ends on Replay, and Replay plays the case again
+//   kpis     four key figures in the header, top right; before anything runs they answer: the stake a
+//            year, the records, the clock with the oldest wait and the session-cost estimate, all the
+//            engine's; after the decision the stake is struck through for what is left and Records
+//            fixed for the engine's count, the clock stops, and Session cost equals the estimate of the
+//            same run in Node
 //   cases    each of the six cases runs along its recommended path to "Done. Nothing was sent.", with
-//            the engine's figures in Records fixed and Cost avoided
+//            the engine's figures in Records fixed and At stake a year
 //   paths    a rejection then another path; the accepted risk with its reason; every path rejected;
 //            the review of AI-suggested values (Confirm waits for every line)
-//   lean     at most 12 controls to click on the first screen; no tool names, user ids, em dashes,
-//            "undefined" or "NaN" on any step (the checker first catches planted ones)
+//   lean     at most 12 controls to click on the first screen; no tool names, user ids, rule codes, em
+//            dashes, "undefined" or "NaN" on any step or guide chapter (the checker first catches
+//            planted ones)
+//   guide    the guide opens by itself on a new tab and not on a reload, ?guide=0 keeps it closed and
+//            ?guide=present opens its talk track; How it works has a row for each key figure, the talk
+//            track three to seven timed steps; every chapter fits 1280 × 720; Start on the last chapter
+//            closes it; Vici's check-guide-render.mjs passes against the page over http
 //   layout   every step of the default case at 1920 × 1080 and 1280 × 720, light and dark: no page
 //            scrolling, the step's main action in view and not covered, the key figures' text uncut,
 //            and at 1920 × 1080 no panel that needs scrolling
-// Usage: node tests/presenter.mjs [steps kpis cases paths lean layout]
+// Usage: node tests/presenter.mjs [steps play kpis cases paths lean guide layout] [--require-vici]
+import { spawn } from "node:child_process";
 import path from "node:path";
-import { APP_ROOT, launchBrowser, serveStatic, outDir, NETWORK_NOISE, ONLY } from "./lib/harness.mjs";
+import { APP_ROOT, launchBrowser, serveStatic, outDir, NETWORK_NOISE, ONLY, REQUIRE_VICI, viciDir } from "./lib/harness.mjs";
 import { expectedRun, approvedFigures } from "./lib/expected.mjs";
 import { loadData } from "./lib/turns.mjs";
 
-const CASES = ["steps", "kpis", "cases", "paths", "lean", "layout"];
+const CASES = ["steps", "play", "kpis", "cases", "paths", "lean", "guide", "layout"];
 const chosen = ONLY.length ? CASES.filter((c) => ONLY.includes(c)) : CASES;
 const OUT = await outDir("presenter");
 const data = await loadData();
@@ -53,15 +65,68 @@ async function newPage({ width = 1920, height = 1080, theme = "light", reducedMo
   page.on("request", (r) => { const u = r.url(); if (!u.startsWith(server.base) && !/^(data|blob):/.test(u)) errors.push(`request to another site: ${u}`); });
   return { context, page, errors };
 }
-const open = async (page, query = "") => {
-  await page.goto(`${server.base}${query.includes("guide=") ? query : `${query}${query.includes("?") ? "&" : "?"}guide=0`}`);
+/** Opens the page with the guide kept closed (?guide=0), unless the query names the guide or guide is true (a new tab as a visitor opens it). */
+const open = async (page, query = "", { guide = false } = {}) => {
+  await page.goto(`${server.base}${guide || query.includes("guide=") ? query : `${query}${query.includes("?") ? "&" : "?"}guide=0`}`);
   await page.waitForSelector('html[data-boot="ready"]', { timeout: 20000 });
   // The loading screen fades out and then leaves the page: wait until it has gone.
   await page.waitForFunction(() => !document.getElementById("boot"), null, { timeout: 5000 });
 };
 const title = (page) => page.locator("#step-title").textContent().then((t) => t.trim());
 const stepOn = (page) => page.$eval('.stepbar .vc-step__button[aria-current="step"]', (b) => Number(b.dataset.step));
-const kpi = (page, id) => page.$eval(`#kpi-${id}`, (e) => ({ value: e.querySelector(".kpi-value").textContent.trim(), unit: e.querySelector(".kpi-unit").textContent.trim(), note: e.querySelector(".kpi-note").textContent.trim(), state: e.dataset.state }));
+/** A key figure as it reads: its value, the old value struck through beside it (Vici's vc-stat__was), its unit, note and state. */
+const kpi = (page, id) => page.$eval(`#kpi-${id}`, (e) => {
+  const was = e.querySelector(".kpi-was");
+  return { was: was && !was.hidden ? was.textContent.trim() : "", value: e.querySelector(".kpi-value").textContent.trim(), unit: e.querySelector(".kpi-unit").textContent.trim(), note: e.querySelector(".kpi-note").textContent.trim(), state: e.dataset.state };
+});
+/** At stake a year once a path is approved: the engine's yearly stake, what the path avoids of it, what is left. */
+function stakeAfter(exp, f) {
+  const atStake = Number(exp.options.nothing.figures.gains_cost_eur_per_year) || 0;
+  const avoided = Math.min(atStake, Number(f?.future_avoided_eur_per_year) || 0);
+  return { atStake, avoided, left: atStake - avoided };
+}
+/** The tile At stake a year shows after path f, as kpis.js words it from the engine's figures. */
+function stakeTile(exp, f) {
+  const { atStake, avoided, left } = stakeAfter(exp, f);
+  const now = Number(f?.avoided_now_eur) || 0;
+  if (avoided > 0) return { was: euro(atStake), value: euro(left), note: left > 0 ? `path ${f.id} avoids ${euro(avoided)}` : `avoided by path ${f.id}`, state: "gain" };
+  if (atStake > 0) return { was: "", value: euro(atStake), note: now > 0 ? `goes on; ${euro(now)} avoided at once` : "goes on with this path", state: "risk" };
+  return { was: "", value: euro(0), note: now > 0 ? `${euro(now)} avoided at once` : "no interest cost in this case", state: now > 0 ? "gain" : "idle" };
+}
+const sameTile = (got, want) => ["was", "value", "note", "state"].every((k) => got[k] === want[k]);
+/** Two animation frames: what the page draws after a click has been drawn. */
+const settle = (page) => page.evaluate(() => new Promise((r) => requestAnimationFrame(() => requestAnimationFrame(r))));
+/** Play's button, the step on screen, how far it is read, the words beside its action and what carries vc-attention. */
+const shown = (page) => page.evaluate(() => {
+  const cur = document.querySelector('.stepbar .vc-step__button[aria-current="step"]');
+  const turn = document.querySelector("#stage .turn");
+  const marked = [...document.querySelectorAll("#stage .vc-attention")];
+  const cta = document.getElementById("btn-cta");
+  return {
+    step: cur ? Number(cur.dataset.step) : null,
+    play: document.getElementById("play-text").textContent.trim(),
+    fill: Number(cur?.closest(".vc-step")?.style.getPropertyValue("--vc-step-fill") || 0),
+    bar: cta ? Number(cta.style.getPropertyValue("--fill") || 0) : null,
+    foot: document.getElementById("foot-note")?.textContent.trim() ?? null,
+    turn: turn ? turn.innerText.replace(/\s+/g, " ").trim() : null,
+    marked: marked.length, markedText: marked[0]?.textContent.trim() || "",
+    markedRecommended: !!marked[0]?.closest('.opt[data-recommended="true"]'),
+    cta: cta ? cta.textContent.trim() : null
+  };
+});
+/** Waits until the page shows step n, up to a time (Play's longest step is 14 s). */
+const reach = (page, n, ms = 16000) => page.waitForFunction((k) => document.querySelector('.stepbar .vc-step__button[aria-current="step"]')?.dataset.step === String(k), n, { timeout: ms }).then(() => true, () => false);
+/** A child process run to its end without blocking this one: { status, stdout, stderr }. */
+function runChild(cmd, args, opts, limit) {
+  return new Promise((resolve) => {
+    const child = spawn(cmd, args, opts);
+    let stdout = "", stderr = "";
+    child.stdout.on("data", (d) => { stdout += d; });
+    child.stderr.on("data", (d) => { stderr += d; });
+    const timer = setTimeout(() => child.kill("SIGKILL"), limit);
+    child.on("close", (status) => { clearTimeout(timer); resolve({ status, stdout, stderr }); });
+  });
+}
 async function approveDrafts(page) {
   for (let i = 0; i < 12; i += 1) {
     if (await page.locator(".report").count()) return;
@@ -193,31 +258,40 @@ await runCase("steps", async (c) => {
     await nx.page.waitForFunction((k) => document.querySelector('.stepbar .vc-step__button[aria-current="step"]')?.dataset.step === String(k), n + 1, { timeout: 5000 });
   }
   ok(c, "the bar's Next stays secondary", await nx.page.$eval("#btn-next", (b) => b.classList.contains("vc-button--secondary")));
-  const turn4 = await nx.page.locator(".decide-head .your-turn").textContent().catch(() => "");
+  const turn4 = await nx.page.locator(".decide-head .turn").textContent().catch(() => "");
   ok(c, "the decision says it is your turn and what to do", /^Your turn\s*Approve one way to fix it, or accept the risk\.$/.test(turn4.trim()) && (await nx.page.locator("#btn-cta").count()) === 0, turn4);
-  ok(c, "the recommended Approve is the action that pulses", await nx.page.$eval('.opt[data-recommended="true"] [data-action="approve"]', (b) => b.classList.contains("nudge")));
-  await nx.page.waitForTimeout(6600);
-  const idle = await nx.page.evaluate(() => ({ nudge: document.getElementById("stage").dataset.nudge, anim: getComputedStyle(document.querySelector('.opt[data-recommended="true"] [data-action="approve"]')).animationName }));
-  ok(c, "after six idle seconds it pulses", idle.nudge === "on" && idle.anim === "nudge", JSON.stringify(idle));
-  await nx.page.keyboard.press("Shift");
-  ok(c, "a key calms it again", (await nx.page.$eval("#stage", (e) => e.dataset.nudge)) === "off");
+  const marked4 = await nx.page.$$eval("#stage .vc-attention", (els) => els.map((b) => ({ text: b.textContent.trim(), rec: !!b.closest('.opt[data-recommended="true"]'), anim: getComputedStyle(b).animationName })));
+  ok(c, "the recommended Approve, and only it, carries Vici's vc-attention", marked4.length === 1 && marked4[0].rec && marked4[0].text === "Approve" && marked4[0].anim === "vc-attention", JSON.stringify(marked4));
   await nx.page.click('.opt[data-recommended="true"] [data-action="approve"]');
   const b4 = await nx.page.waitForSelector("#btn-cta", { timeout: 5000 }).then(() => cta());
   ok(c, 'after the decision the step ends with "Next: the drafts", in view', b4 && b4.text === "Next: the drafts" && b4.inView, JSON.stringify(b4));
   await nx.page.click("#btn-cta");
-  const turn5 = await nx.page.locator(".decide-head .your-turn").textContent().catch(() => "");
+  await nx.page.waitForSelector('.draft[data-status="pending"]', { timeout: 10000 });
+  const turn5 = await nx.page.locator(".decide-head .turn").textContent().catch(() => "");
   ok(c, "the drafts say it is your turn", /^Your turn\s*Approve or reject each draft/.test(turn5.trim()), turn5);
+  ok(c, "the first draft's Approve carries vc-attention", (await nx.page.$$eval("#stage .vc-attention", (els) => els.map((b) => !!b.closest(".draft") && b.textContent.trim() === "Approve"))).join() === "true");
   await approveDrafts(nx.page);
-  ok(c, "with the report done, nothing asks for a turn", (await nx.page.locator(".your-turn, #btn-cta").count()) === 0);
+  ok(c, "with the report done, nothing asks for a turn", (await nx.page.locator("#stage .turn, #btn-cta, #stage .vc-attention").count()) === 0);
   await nx.context.close();
 
-  // Reduced motion: the key figures change without their flip, and the nudge is a still ring.
+  // Paused on a step, its Next draws the eye after six idle seconds, and a key calms it again.
+  const idle = await newPage();
+  await open(idle.page, `?case=${slug(LEAD)}&step=1`);
+  await idle.page.waitForSelector("#btn-cta", { timeout: 10000 });
+  ok(c, "a link to a step opens it paused, with nothing marked yet", (await shown(idle.page)).marked === 0 && (await shown(idle.page)).play === "Play");
+  await idle.page.waitForTimeout(6600);
+  const quiet = await idle.page.$eval("#btn-cta", (b) => ({ marked: b.classList.contains("vc-attention"), anim: getComputedStyle(b).animationName }));
+  ok(c, "after six idle seconds the paused step's Next carries vc-attention", quiet.marked && quiet.anim === "vc-attention", JSON.stringify(quiet));
+  await idle.page.keyboard.press("Shift");
+  ok(c, "a key calms it again", !(await idle.page.$eval("#btn-cta", (b) => b.classList.contains("vc-attention"))));
+  await idle.context.close();
+
+  // Reduced motion: the key figures change without their flip, and vc-attention is a still ring.
   const rm = await newPage({ reducedMotion: "reduce" });
   await open(rm.page, `?case=${slug(LEAD)}&step=4`);
   await rm.page.waitForSelector('.opt[data-recommended="true"] [data-action="approve"]:not([disabled])', { timeout: 10000 });
-  await rm.page.waitForTimeout(6600);
-  const still = await rm.page.$eval('.opt[data-recommended="true"] [data-action="approve"]', (b) => ({ name: getComputedStyle(b).animationName, ring: getComputedStyle(b).boxShadow, nudge: document.getElementById("stage").dataset.nudge }));
-  ok(c, "with reduced motion the nudge does not move but still shows a ring", still.nudge === "on" && still.name === "none" && still.ring !== "none", JSON.stringify(still));
+  const still = await rm.page.$eval('.opt[data-recommended="true"] [data-action="approve"]', (b) => ({ marked: b.classList.contains("vc-attention"), ms: parseFloat(getComputedStyle(b).animationDuration) * (getComputedStyle(b).animationDuration.endsWith("ms") ? 1 : 1000), runs: getComputedStyle(b).animationIterationCount, ring: getComputedStyle(b).boxShadow }));
+  ok(c, "with reduced motion vc-attention does not move but still shows a ring", still.marked && still.ms < 1 && still.runs === "1" && still.ring !== "none", JSON.stringify(still));
   await rm.page.click('.opt[data-recommended="true"] [data-action="approve"]');
   await rm.page.waitForTimeout(200);
   const anim = await rm.page.$eval("#kpi-cost .kpi-value", (e) => ({ flip: e.classList.contains("flip"), name: getComputedStyle(e).animationName }));
@@ -225,30 +299,118 @@ await runCase("steps", async (c) => {
   await rm.context.close();
 });
 
+// ---- play ---------------------------------------------------------------------------------------------
+await runCase("play", async (c) => {
+  const { page, context } = await newPage({ width: 1600, height: 900 });
+  await open(page);
+  let s = await shown(page);
+  ok(c, "the first screen waits for Start: Your turn, Start carries vc-attention, Play's button reads Play", s.step === 0 && s.play === "Play" && /^Your turn /.test(s.turn || "") && s.marked === 1 && s.markedText === "Start the agent", JSON.stringify(s));
+  await page.waitForTimeout(2500);
+  ok(c, "it waits however long it takes", (await shown(page)).step === 0);
+  await page.click("#btn-start");
+  await settle(page);
+  s = await shown(page);
+  ok(c, "Start plays the case from Spot", s.step === 1 && s.play === "Pause", JSON.stringify(s));
+  await page.waitForTimeout(3000);
+  s = await shown(page);
+  ok(c, "while Play reads Spot, the rail to the next step and the bar along Next fill", s.step === 1 && s.fill > 0.1 && s.fill < 0.6 && Math.abs(s.bar - s.fill) < 0.05, JSON.stringify(s));
+  ok(c, "beside Next, the page says when it moves on", /^Plays on in \d{1,2} s$/.test(s.foot || ""), s.foot);
+  // A dialog holds Play: How it works over the page, then closed again.
+  await page.click("#btn-guide");
+  const held = (await shown(page)).fill;
+  await page.waitForTimeout(1500);
+  const after = (await shown(page)).fill;
+  await page.keyboard.press("Escape");
+  await settle(page);
+  ok(c, "an open dialog holds Play", Math.abs(after - held) < 0.02 && (await shown(page)).play === "Pause", `${held} → ${after}`);
+  ok(c, "Play reads Spot and moves on to Check by itself", await reach(page, 2));
+  ok(c, "the address follows Play", new URL(page.url()).searchParams.get("step") === "2", page.url());
+  // Space pauses and plays again (the focus is on no button).
+  await page.evaluate(() => document.activeElement?.blur());
+  await page.keyboard.press(" ");
+  await settle(page);
+  s = await shown(page);
+  await page.waitForTimeout(1200);
+  const later = await shown(page);
+  ok(c, "Space pauses Play, and the rail stops", s.play === "Play" && Math.abs(later.fill - s.fill) < 0.01 && later.step === 2, `${JSON.stringify(s)} → ${later.fill}`);
+  ok(c, "paused, the words beside Next say the move is yours", s.foot === "Your move", s.foot);
+  await page.keyboard.press(" ");
+  await settle(page);
+  ok(c, "Space plays again", (await shown(page)).play === "Pause");
+  // A step chosen by key pauses Play; the Play button goes on from there.
+  await page.keyboard.press("ArrowRight");
+  await settle(page);
+  s = await shown(page);
+  ok(c, "a step chosen by key pauses Play", s.play === "Play" && s.step === 3, JSON.stringify(s));
+  await page.click("#btn-play");
+  await settle(page);
+  s = await shown(page);
+  ok(c, "Play goes on from the step on screen", s.play === "Pause" && s.step === 3, JSON.stringify(s));
+  // The step's Next goes on at once and keeps Play; at the decision Play waits for the person.
+  await page.click("#btn-cta");
+  await settle(page);
+  s = await shown(page);
+  ok(c, "the step's Next goes on at once and keeps Play going", s.step === 4 && s.play === "Pause", JSON.stringify(s));
+  ok(c, "at the decision: Your turn, the recommended Approve marked, no Next", /^Your turn Approve one way to fix it, or accept the risk\.$/.test(s.turn || "") && s.marked === 1 && s.markedRecommended && s.cta === null, JSON.stringify(s));
+  await page.waitForTimeout(2000);
+  ok(c, "Play waits for the person", (await shown(page)).step === 4);
+  await page.click('.opt[data-recommended="true"] [data-action="approve"]');
+  await page.waitForSelector("#btn-cta", { timeout: 10000 }).catch(() => {});
+  s = await shown(page);
+  ok(c, "after the approval the turn goes and Next comes back", !s.turn && s.cta === "Next: the drafts" && s.step === 4, JSON.stringify(s));
+  ok(c, "Play moves on to the drafts by itself once the decision is read", await reach(page, 5));
+  await page.waitForSelector('.draft[data-status="pending"]', { timeout: 15000 });
+  s = await shown(page);
+  ok(c, "at the drafts: Your turn again, the first draft's Approve marked", /^Your turn Approve or reject each draft/.test(s.turn || "") && s.marked === 1 && s.markedText === "Approve", JSON.stringify(s));
+  await approveDrafts(page);
+  await page.waitForFunction(() => document.getElementById("play-text").textContent.trim() === "Replay", null, { timeout: 5000 }).catch(() => {});
+  s = await shown(page);
+  ok(c, "after the drafts the story ends on Replay, with nothing left to press", s.play === "Replay" && !s.turn && !s.marked && s.cta === null, JSON.stringify(s));
+  await page.click("#btn-play");
+  await settle(page);
+  s = await shown(page);
+  const reopened = await page.waitForFunction(() => document.querySelector('.vc-step[data-step="propose"]')?.dataset.turn === "yours", null, { timeout: 10000 }).then(() => true, () => false);
+  ok(c, "Replay plays the case again from Spot, its decision open again", s.step === 1 && s.play === "Pause" && reopened, JSON.stringify(s));
+  await context.close();
+});
+
 // ---- kpis ---------------------------------------------------------------------------------------------
 await runCase("kpis", async (c) => {
   const exp = await expectedRun(LEAD);
   const f = approvedFigures(exp);
   const atStake = exp.options.nothing.figures.gains_cost_eur_per_year;
-  for (const [w, hgt] of [[1920, 1080], [1280, 720]]) {
+  const n = int(exp.alert.exceptions);
+  // Answer first: before anything runs, the tiles show the case as the engine works it out.
+  const first = {
+    cost: { was: "", value: euro(atStake), note: "if nothing changes", state: "risk" },
+    fixed: { value: "0", unit: `of ${n}`, note: `${euro(exp.alert.spend_eur)} of orders` },
+    time: { value: "0:00", unit: "min", note: `oldest waited ${int(exp.age.oldestDays)} days` },
+    session: { value: `≈ ${euroCents(exp.estimate.eur)}`, note: "estimate if run live" }
+  };
+  for (const [w, hgt, query] of [[1920, 1080, ""], [1280, 720, ""], [1280, 720, "?guide=present"]]) {
+    const tag = `${w}${query ? ", guide open" : ""}`;
     const { page, context } = await newPage({ width: w, height: hgt });
-    await open(page);
+    await open(page, query);
     const tiles = await page.$$eval("[data-vc-kpi]", (els) => els.map((e) => {
       const r = e.getBoundingClientRect();
-      return { name: e.dataset.vcKpi, inHeader: !!e.closest("header.app-header"), left: r.left, right: r.right, top: r.top, value: e.querySelector(".kpi-value")?.textContent.trim() };
+      return { name: e.dataset.vcKpi, inHeader: !!e.closest("header.app-header"), left: r.left, right: r.right, top: r.top };
     }));
-    ok(c, `${w}: four key figures in the header`, tiles.length === 4 && tiles.every((t) => t.inHeader), JSON.stringify(tiles.map((t) => t.name)));
-    ok(c, `${w}: they sit top right`, tiles.every((t) => t.top < 40 && t.left >= w * 0.4) && Math.max(...tiles.map((t) => t.right)) >= w - 40, JSON.stringify(tiles.map((t) => [Math.round(t.left), Math.round(t.top)])));
-    ok(c, `${w}: each reads sensibly before anything happens`, tiles.every((t) => t.value && !/—|NaN|undefined/.test(t.value)), JSON.stringify(tiles.map((t) => t.value)));
+    ok(c, `${tag}: four key figures in the header`, tiles.length === 4 && tiles.every((t) => t.inHeader), JSON.stringify(tiles.map((t) => t.name)));
+    ok(c, `${tag}: they sit top right`, tiles.every((t) => t.top < 40 && t.left >= w * 0.4) && Math.max(...tiles.map((t) => t.right)) >= w - 40, JSON.stringify(tiles.map((t) => [Math.round(t.left), Math.round(t.top)])));
+    for (const [id, want] of Object.entries(first)) {
+      const got = await kpi(page, id);
+      ok(c, `${tag}: before anything runs, ${id} shows the engine's figure`, Object.entries(want).every(([k, v]) => got[k] === v), JSON.stringify(got));
+    }
+    if (query) ok(c, `${tag}: the guide is open over them`, await page.evaluate(() => document.getElementById("guide").open));
     await context.close();
   }
   const { page, context } = await newPage();
   await open(page, `?case=${slug(LEAD)}&step=4`);
   await page.waitForSelector('.opt[data-recommended="true"] [data-action="approve"]:not([disabled])', { timeout: 10000 });
   const before = await kpi(page, "cost");
-  ok(c, "before the decision, Cost avoided shows what is at stake", before.value === euro(0) && before.note === `${euro(atStake)} a year at stake` && before.state === "risk", JSON.stringify(before));
+  ok(c, "before the decision, At stake a year shows the engine's yearly cost if nothing changes", sameTile(before, first.cost), JSON.stringify(before));
   const fixedBefore = await kpi(page, "fixed");
-  ok(c, "Records fixed starts at 0 of the case", fixedBefore.value === "0" && fixedBefore.unit === `of ${int(exp.alert.exceptions)}`, JSON.stringify(fixedBefore));
+  ok(c, "Records fixed starts at 0 of the case", fixedBefore.value === "0" && fixedBefore.unit === `of ${n}` && !fixedBefore.was, JSON.stringify(fixedBefore));
   const clock1 = await kpi(page, "time");
   await page.waitForTimeout(2300); // the clock redraws once a second
   const clock2 = await kpi(page, "time");
@@ -257,9 +419,12 @@ await runCase("kpis", async (c) => {
   await page.click('.opt[data-recommended="true"] [data-action="approve"]');
   await page.waitForTimeout(400);
   const cost = await kpi(page, "cost");
-  ok(c, "after the decision, Cost avoided is the engine's yearly figure", cost.value === euro(f.future_avoided_eur_per_year) && cost.unit === "a year" && cost.note === `and ${euro(f.avoided_now_eur)} at once` && cost.state === "gain", JSON.stringify(cost));
+  const want = stakeTile(exp, f);
+  ok(c, "after the decision, the stake is struck through and the tile shows what is left, the engine's figures", sameTile(cost, want) && want.was === euro(atStake), `${JSON.stringify(cost)} vs ${JSON.stringify(want)}`);
+  const struck = await page.$eval("#kpi-cost .kpi-was", (e) => ({ tag: e.tagName, cls: e.className, line: getComputedStyle(e).textDecorationLine }));
+  ok(c, "the old value is Vici's vc-stat__was, struck through", struck.tag === "S" && /\bvc-stat__was\b/.test(struck.cls) && /line-through/.test(struck.line), JSON.stringify(struck));
   const fixed = await kpi(page, "fixed");
-  ok(c, "Records fixed is the engine's projection", fixed.value === int(f.closed) && fixed.unit === `of ${int(exp.alert.exceptions)}` && /^projected/.test(fixed.note), JSON.stringify(fixed));
+  ok(c, "Records fixed is the engine's projection, the 0 struck through", fixed.was === "0" && fixed.value === int(f.closed) && fixed.unit === `of ${n}` && /^projected/.test(fixed.note), JSON.stringify(fixed));
   const t1 = await kpi(page, "time");
   await page.waitForTimeout(1300);
   const t2 = await kpi(page, "time");
@@ -269,8 +434,8 @@ await runCase("kpis", async (c) => {
   await page.waitForTimeout(300);
   const session = await kpi(page, "session");
   ok(c, "Session cost is the estimate of the same run, labelled as one", session.value === `≈ ${euroCents(exp.estimate.eur)}` && /estimate/.test(session.note), `${session.value} vs ${euroCents(exp.estimate.eur)}`);
-  const guide = await page.$$eval("[data-fact]", (els) => Object.fromEntries(els.map((e) => [e.dataset.fact, e.textContent])));
-  ok(c, "the guide's talk track quotes the engine's figures", guide["lead.yearly"] === euro(atStake) && guide["lead.n"] === int(exp.alert.exceptions) && guide["lead.age"] === `${int(exp.age.oldestDays)} days` && guide["lead.session"] === euroCents(exp.estimate.eur), JSON.stringify(guide));
+  const guide = await page.$$eval("[data-fig]", (els) => Object.fromEntries(els.map((e) => [e.dataset.fig, e.textContent])));
+  ok(c, "the guide quotes the engine's figures", guide["lead.yearly"] === euro(atStake) && guide["lead.left"] === euro(stakeAfter(exp, f).left) && guide["lead.n"] === n && guide["lead.age"] === `${int(exp.age.oldestDays)} days` && guide["lead.session"] === euroCents(exp.estimate.eur) && guide["lead.fixed"] === `${int(f.closed)} of ${n}`, JSON.stringify(guide));
   await context.close();
 });
 
@@ -295,7 +460,8 @@ await runCase("cases", async (c) => {
     const t = await title(page);
     const report = await page.locator(".report").innerText();
     ok(c, `${sc.id}: recommends what the script recommends`, rec === exp.options.recommended, rec);
-    ok(c, `${sc.id}: Records fixed and Cost avoided are the engine's`, fixed.value === int(f.closed) && cost.value === euro(f.future_avoided_eur_per_year), `${fixed.value}/${int(f.closed)} ${cost.value}/${euro(f.future_avoided_eur_per_year)}`);
+    const want = stakeTile(exp, f);
+    ok(c, `${sc.id}: Records fixed and At stake a year are the engine's`, fixed.value === int(f.closed) && sameTile(cost, want), `${fixed.value}/${int(f.closed)} ${JSON.stringify(cost)} vs ${JSON.stringify(want)}`);
     ok(c, `${sc.id}: ends with nothing sent`, t === "Done. Nothing was sent." && /nothing was sent/i.test(report) && (await page.locator('.draft[data-status="approved"]').count()) === exp.drafts.length, t);
     if (errors.length) c[`${sc.id}: page errors`] = `FAIL: ${errors.join(" | ")}`;
     await page.screenshot({ path: path.join(OUT, `case-${slug(sc.id)}-done.png`) });
@@ -335,7 +501,8 @@ await runCase("paths", async (c) => {
     await page.click('.opt[data-path="nothing"] [data-action="accept"]');
     await page.waitForTimeout(300);
     const cost = await kpi(page, "cost");
-    ok(c, "the accepted risk shows what goes on", cost.value === euro(0) && / a year goes on$/.test(cost.note) && cost.state === "risk", JSON.stringify(cost));
+    const stake = (await expectedRun(LEAD)).options.nothing.figures.gains_cost_eur_per_year;
+    ok(c, "the accepted risk keeps the stake, says it goes on, and strikes nothing through", cost.value === euro(stake) && cost.note === "risk accepted: it goes on" && cost.state === "risk" && !cost.was, JSON.stringify(cost));
     await goStep(page, 5);
     ok(c, "a risk memo waits for approval", (await page.$$eval('.draft[data-status="pending"]', (els) => els.map((e) => e.dataset.kind).join())) === "risk_memo");
     await approveDrafts(page);
@@ -368,12 +535,15 @@ await runCase("paths", async (c) => {
     await page.waitForSelector(".review-table", { timeout: 10000 });
     const rows = await page.locator(".review-table tbody tr").count();
     ok(c, "the review lists every AI suggestion and waits", rows > 0 && (await page.$eval('.vc-step[data-step="check"]', (e) => e.dataset.turn)) === "yours", `${rows} rows`);
-    const turn = await page.locator(".story-foot .your-turn").textContent().catch(() => "");
-    ok(c, "the story says it is your turn, and nothing says the agent is still checking", /^Your turn\s*Check the AI's suggestions, then confirm them\.$/.test(turn.trim()) && !(await page.locator(".story .step-wait").count()), turn);
+    const turn = await page.locator(".review .turn").textContent().catch(() => "");
+    ok(c, "the review says it is your turn, and nothing says the agent is still checking", /^Your turn\s*Approve or reject each suggestion, then confirm\.$/.test(turn.trim()) && !(await page.locator(".story .step-wait").count()), turn);
+    ok(c, "Approve all carries vc-attention while lines wait", (await page.$$eval("#stage .vc-attention", (els) => els.map((b) => b.id))).join() === "btn-review-all");
     ok(c, "Confirm waits until every line is decided", await page.isDisabled("#btn-review-confirm"));
     await page.click(".review-table tbody tr >> nth=0 >> [data-action=\"reject\"]");
     await page.click("#btn-review-all");
     ok(c, "Approve all decides every line", !(await page.isDisabled("#btn-review-confirm")));
+    const turn2 = await page.locator(".review .turn").textContent().catch(() => "");
+    ok(c, "then the turn asks for Confirm, which carries vc-attention", /^Your turn\s*Every line is decided: confirm the review\.$/.test(turn2.trim()) && (await page.$$eval("#stage .vc-attention", (els) => els.map((b) => b.id))).join() === "btn-review-confirm", turn2);
     await page.click("#btn-review-confirm");
     await page.waitForSelector(".case-card", { timeout: 10000 });
     ok(c, "after the review the case shows what you approved", /AI suggestions approved/.test(await page.locator(".case-card").innerText()) && exp.alert !== null);
@@ -383,10 +553,10 @@ await runCase("paths", async (c) => {
 });
 
 // ---- lean ---------------------------------------------------------------------------------------------
-const BAD = [[/\b(?:erp|dq|ui)_[a-z]+(?:_[a-z]+)*\b/, "a tool name"], [/\bU\d{3}\b/, "a user id"], [/—/, "an em dash"], [/\bundefined\b|\bNaN\b|\[object Object\]/, "a broken value"]];
+const BAD = [[/\b(?:erp|dq|ui)_[a-z]+(?:_[a-z]+)*\b/, "a tool name"], [/\bU\d{3}\b/, "a user id"], [/\bDQ-\d{2}\b/, "a rule code"], [/—/, "an em dash"], [/\bundefined\b|\bNaN\b|\[object Object\]/, "a broken value"]];
 const badIn = (text) => BAD.flatMap(([re, what]) => { const m = text.match(re); return m ? [`${what} (${m[0]})`] : []; });
 await runCase("lean", async (c) => {
-  ok(c, "self-test: planted tool name, user id and em dash are caught", badIn("Reads erp_get_record of U190 — fine").length === 3 && badIn("Two rules flag 23 order lines").length === 0);
+  ok(c, "self-test: planted tool name, user id, rule code and em dash are caught", badIn("Reads erp_get_record of U190 under DQ-07 — fine").length === 4 && badIn("Two rules flag 23 order lines").length === 0);
   const { page, context } = await newPage();
   await open(page);
   const controls = await page.evaluate(() => {
@@ -417,9 +587,70 @@ await runCase("lean", async (c) => {
   await approveDrafts(page);
   await sample("step 5, the report");
   await page.click("#btn-guide");
-  for (let i = 0; i < 5; i += 1) { await sample(`the guide, chapter ${i + 1}`); await page.click("dialog.vc-guide [data-vc-guide-next]"); }
-  ok(c, "no step shows a tool name, a user id, an em dash or a broken value", !seen.length, seen.join(" | "));
+  const chapters = await page.$$eval("#guide .vc-guide__chapter", (els) => els.length);
+  for (let i = 0; i < chapters; i += 1) { await sample(`the guide, chapter ${i + 1}`); await page.click("dialog.vc-guide [data-vc-guide-next]"); }
+  ok(c, `the guide's ${chapters} chapters were all read, and its last Start closed it`, chapters >= 3 && !(await page.evaluate(() => document.getElementById("guide").open)));
+  ok(c, "no step or chapter shows a tool name, a user id, a rule code, an em dash or a broken value", !seen.length, seen.join(" | "));
   await context.close();
+});
+
+// ---- guide --------------------------------------------------------------------------------------------
+await runCase("guide", async (c) => {
+  const isOpen = (page) => page.evaluate(() => document.getElementById("guide").open === true);
+  const chapterOn = (page) => page.evaluate(() => [...document.querySelectorAll("#guide .vc-guide__chapter")].find((x) => !x.hidden)?.dataset.vcChapter || null);
+  for (const [w, hgt] of [[1920, 1080], [1280, 720]]) {
+    const { page, context } = await newPage({ width: w, height: hgt });
+    await open(page, "", { guide: true });
+    ok(c, `${w}: the guide opens by itself on a new tab`, await isOpen(page));
+    const chapters = await page.$$eval("#guide .vc-guide__chapter", (els) => els.length);
+    const over = [];
+    for (let i = 0; i < chapters; i += 1) {
+      const r = await page.evaluate(() => {
+        const g = document.getElementById("guide");
+        const box = g.getBoundingClientRect();
+        const ch = [...g.querySelectorAll(".vc-guide__chapter")].find((x) => !x.hidden);
+        const out = [];
+        for (let el = ch; el && el !== g; el = el.parentElement) if (el.scrollHeight > el.clientHeight + 2 && getComputedStyle(el).overflowY !== "visible") out.push(`${el.className} ${el.scrollHeight}>${el.clientHeight}`);
+        if (box.top < 0 || box.bottom > innerHeight + 1) out.push(`the dialog leaves the window (${Math.round(box.top)} to ${Math.round(box.bottom)})`);
+        return { id: ch?.dataset.vcChapter, out };
+      });
+      if (r.out.length) over.push(`${r.id}: ${r.out.join(", ")}`);
+      await page.click("#guide [data-vc-guide-next]");
+    }
+    ok(c, `${w}: each of its ${chapters} chapters fits the window without scrolling`, chapters >= 3 && !over.length, over.join(" | "));
+    ok(c, `${w}: Start on the last chapter closes it`, !(await isOpen(page)));
+    await page.reload();
+    await page.waitForSelector('html[data-boot="ready"]', { timeout: 20000 });
+    ok(c, `${w}: a reload in the same tab leaves it closed`, !(await isOpen(page)));
+    await context.close();
+  }
+  const closed = await newPage();
+  await open(closed.page, "?guide=0");
+  ok(c, "?guide=0 keeps it closed", !(await isOpen(closed.page)));
+  await closed.context.close();
+  const talk = await newPage({ width: 1280, height: 720 });
+  await open(talk.page, "?guide=present");
+  ok(c, "?guide=present opens it on the talk track", (await isOpen(talk.page)) && (await chapterOn(talk.page)) === "present", await chapterOn(talk.page));
+  // How it works: a row for each key figure, by the tile's own name; the talk track: three to seven timed steps.
+  const shape = await talk.page.evaluate(() => {
+    const names = [...document.querySelectorAll("[data-vc-kpi]")].map((e) => e.dataset.vcKpi);
+    const rows = [...document.querySelectorAll('#guide [data-vc-chapter="how"] tbody tr')].map((tr) => ({ name: tr.querySelector("th")?.textContent.trim(), cells: tr.querySelectorAll("td").length, value: tr.querySelector("td:last-child")?.textContent.trim() }));
+    const steps = [...document.querySelectorAll('#guide [data-vc-chapter="present"] .vc-guide__path > li')].map((li) => li.querySelector(".vc-guide__time")?.textContent.trim() || "");
+    return { names, rows, steps };
+  });
+  const missing = shape.names.filter((n) => !shape.rows.some((r) => r.name === n && r.cells >= 2 && r.value));
+  ok(c, "How it works has a row for each key figure: what it measures and its value in the case", shape.names.length === 4 && !missing.length, `missing: ${missing.join(", ")}; rows: ${JSON.stringify(shape.rows)}`);
+  ok(c, "the talk track has three to seven steps, each with its time", shape.steps.length >= 3 && shape.steps.length <= 7 && shape.steps.every((t) => /^\d+(\.\d+)? min$/.test(t)), JSON.stringify(shape.steps));
+  await talk.context.close();
+  // Vici's own render check of the guide, against the page served over http.
+  const vici = viciDir();
+  if (!vici) {
+    ok(c, "a ViciDesign checkout for check-guide-render.mjs (VICI_DIR or ../ViciDesign)", !REQUIRE_VICI, "none found");
+    c["Vici's check-guide-render.mjs"] = "info: skipped, no ViciDesign checkout";
+  } else {
+    const r = await runChild(process.execPath, [path.join(vici, "scripts", "check-guide-render.mjs"), server.base], { cwd: vici, env: process.env }, 240000);
+    ok(c, "Vici's check-guide-render.mjs passes against the page", r.status === 0 && /GUIDE BEHAVIOUR OK/.test(r.stdout), `exit ${r.status}: ${(r.stdout + r.stderr).split("\n").filter((l) => l.trim()).slice(-8).join(" | ")}`);
+  }
 });
 
 // ---- layout -------------------------------------------------------------------------------------------
@@ -435,7 +666,7 @@ await runCase("layout", async (c) => {
         await page.waitForTimeout(200);
         const r = await page.evaluate((sel) => {
           const doc = document.documentElement;
-          const out = { scrollX: doc.scrollWidth > innerWidth + 1, scrollY: doc.scrollHeight > innerHeight + 1, main: [], cut: [], panels: [] };
+          const out = { scrollX: doc.scrollWidth > innerWidth + 1, scrollY: doc.scrollHeight > innerHeight + 1, main: [], cut: [], panels: [], story: [] };
           for (const el of sel ? document.querySelectorAll(sel) : []) {
             const b = el.getBoundingClientRect();
             const inView = b.top >= 0 && b.left >= 0 && b.bottom <= innerHeight && b.right <= innerWidth && b.width > 0;
@@ -444,12 +675,15 @@ await runCase("layout", async (c) => {
           }
           for (const el of document.querySelectorAll(".kpi .vc-stat__label, .kpi .kpi-note, .kpi .vc-stat__value")) if (el.scrollWidth > el.clientWidth + 1) out.cut.push(el.textContent.trim());
           for (const el of document.querySelectorAll(".stage .panel, .stage .drafts, .stage .options")) if (el.scrollHeight > el.clientHeight + 2) out.panels.push(el.className);
+          // The story and the bar under it fit at every size: nothing of what just happened hides under the bar.
+          for (const el of document.querySelectorAll(".stage .panel.story")) if (el.scrollHeight > el.clientHeight + 2) out.story.push(`${el.scrollHeight - el.clientHeight} px`);
           return out;
         }, main);
         if (r.scrollX || r.scrollY) problems.push(`${state}: the page scrolls ${r.scrollX ? "sideways" : ""}${r.scrollY ? " down" : ""}`);
         if (main && (!r.main.length || r.main.some((m) => !m.inView || m.covered))) problems.push(`${state}: the main action is out of view or covered (${JSON.stringify(r.main)})`);
         if (r.cut.length) problems.push(`${state}: cut key-figure text: ${r.cut.join(" | ")}`);
         if (w >= 1920 && r.panels.length) problems.push(`${state}: a panel needs scrolling: ${r.panels.join(", ")}`);
+        if (r.story.length) problems.push(`${state}: the story needs scrolling (${r.story.join(", ")})`);
         await page.screenshot({ path: path.join(OUT, `${tag}-${state.replace(/\W+/g, "-")}.png`) });
       };
       await open(page);
