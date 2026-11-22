@@ -1,5 +1,7 @@
 # Runs the test suites on every push and pull request. The app itself has no build step and no
-# dependencies; Playwright is installed here only for the browser suites (tests/README.md).
+# dependencies; Playwright is installed here only for the browser suites (tests/README.md). ViciDesign is
+# checked out next to the app at the commit vici/ was copied from, so the suites run Vici's own checks
+# and compare vici/ with it byte for byte.
 name: tests
 
 on:
@@ -17,44 +19,61 @@ concurrency:
 jobs:
   node:
     # GitHub cuts job names at 100 characters.
-    name: Node.js suites (design, world, unit, engine, audit, tools, VAT, policy, hygiene, docs)
+    name: Node.js suites (Vici's checks, design, world, unit, engine, audit, tools, VAT, policy, docs)
     # Pinned image: Playwright 1.56's system dependencies are known to install on Ubuntu 24.04.
     runs-on: ubuntu-24.04
     timeout-minutes: 10
     steps:
       - uses: actions/checkout@v4
+        with:
+          path: app
+      - uses: actions/checkout@v4
+        with:
+          repository: VictorPflueger/ViciDesign
+          ref: d0203e3fa7d06f57441831def2afbd655de01211
+          path: ViciDesign
+          fetch-depth: 0
       - uses: actions/setup-node@v4
         with:
           node-version: 22
-      # Rebate Hunter's public repository, next to this checkout where the world suite looks for it: it
+      # Rebate Hunter's public repository, next to the app where the world suite looks for it: it
       # re-derives the shared accounts from the commit they were taken from, so the clone keeps its
       # history (about 2 MB).
-      - run: git clone https://github.com/VictorPflueger/PROC-Rebate-Hunter ../PROC-Rebate-Hunter
-      # Victor's website next to this checkout, but only once it carries this prototype's card: the
-      # page-icon suite then holds the card's name, icon and kind to the page (AC-18). Until the card is
-      # merged the clone is dropped again, and the suite checks the page's own icons.
+      - run: git clone https://github.com/VictorPflueger/PROC-Rebate-Hunter PROC-Rebate-Hunter
+      # Victor's website next to the app, but only once it carries this prototype's card: the page-icon
+      # suite then holds the card's name, icon and kind to the page (AC-18). Without the card the clone
+      # is dropped again, and the suite checks the page's own icons.
       - name: VIP's card for this prototype, if it exists
         run: |
-          git clone --depth 1 https://github.com/VictorPflueger/VIP ../VIP
-          if grep -q 'name: "Data Quality Agent"' ../VIP/data/prototypes.js; then
+          git clone --depth 1 https://github.com/VictorPflueger/VIP VIP
+          if grep -q 'name: "Data Quality Agent"' VIP/data/prototypes.js; then
             echo "VIP carries the card: page-icon compares the page with it."
           else
-            rm -rf ../VIP
+            rm -rf VIP
             echo "VIP has no card for this prototype yet: page-icon checks the page alone."
           fi
       # The hygiene check reads a private term list from the HYGIENE_TERMS secret if the repository
       # has one; without it the generic checks run (tests/hygiene.mjs).
-      - run: node tests/run-all.mjs tokens page-icon vici-files world unit engine audit tools vat policy hygiene docs
+      - name: Node.js suites
+        working-directory: app
+        run: node tests/run-all.mjs --require-vici tokens page-icon vici-files vici world unit engine audit tools vat policy hygiene docs
         env:
           HYGIENE_TERMS: ${{ secrets.HYGIENE_TERMS }}
 
   browser:
-    name: Browser suites (Playwright, Chromium)
+    name: Browser suites (Playwright, Chromium, with Vici's guide check)
     runs-on: ubuntu-24.04
     timeout-minutes: 40
     needs: node
     steps:
       - uses: actions/checkout@v4
+        with:
+          path: app
+      - uses: actions/checkout@v4
+        with:
+          repository: VictorPflueger/ViciDesign
+          ref: d0203e3fa7d06f57441831def2afbd655de01211
+          path: ViciDesign
       - uses: actions/setup-node@v4
         with:
           node-version: 22
@@ -64,7 +83,9 @@ jobs:
           path: ~/.cache/ms-playwright
           key: playwright-1.56.0-chromium-${{ runner.os }}
       - run: npm install -g playwright@1.56.0 && npx playwright install --with-deps chromium
-      - run: NODE_PATH="$(npm root -g)" node tests/run-all.mjs presenter live_ui hexagon
+      - name: Browser suites
+        working-directory: app
+        run: NODE_PATH="$(npm root -g)" node tests/run-all.mjs --require-vici presenter live_ui hexagon
         env:
           DQ_TEST_OUT: ${{ runner.temp }}/data-quality-agent-tests
       - if: always()

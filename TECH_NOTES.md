@@ -2,7 +2,7 @@
 
 The Data Quality Agent runs as a static page and, in Live mode, calls the Claude API directly from the browser and nothing else. Every external detail the code depends on is recorded here with its source and the date it was verified. If a fact changes, update this file first, then `js/config.js`.
 
-**Basis.** Version **2.1.0**, 20 November 2026: the presenter, with the next action named in every step (section 9.3, P13). The page was rebuilt for customer presentations: the tip and five steps in a step bar, four key figures top right, Vici's guide with a five-minute talk track, the byline in the footer, and Live mode in a dialog of its own (section 9.3). The engine, the world, the seventeen tools with their guardrails, the figure audit, the live agent, the six simulation scripts and the audit log are version 1.0.0's and compute what they computed then; version 1.0.0's build plan, independent review and gates stay in the git history (commit `6386bd6`). The page uses Vici v1.0.0 at commit `f7bf7e0`. Sections 1 to 3 record the API facts the live agent rests on, probed on 19 November 2026. Section 4 is the browser's security policy and storage; section 5 the world; section 6 how the engine reads the method; section 7 the agent in Live mode and its guardrails; section 8 Simulation and the session-cost estimate; section 9 the decisions and open points; sections 10 and 11 the verification log and the acceptance checklist.
+**Basis.** Version **2.2.0**, 22 November 2026: the first screen answers first and the page plays itself (section 9.3, P14 to P21). Before anything runs, the four key figures show what the default case puts at stake, as the engine works it out; *Start the agent* is the one primary action of a *Your turn* bar; Play walks the steps and stops wherever a person acts; and the key figures' rows sit in the guide's How it works chapter. Version 2.0.0 rebuilt the page for customer presentations: the tip and five steps in a step bar, four key figures top right, Vici's guide with a five-minute talk track, and Live mode in a dialog of its own (section 9.3). The engine, the world, the seventeen tools with their guardrails, the figure audit, the live agent, the six simulation scripts and the audit log are version 1.0.0's and compute what they computed then; version 1.0.0's build plan, independent review and gates stay in the git history (commit `6386bd6`). The page uses Vici v1.0.0 as it stands on main at commit `d0203e3` (`vici/README.md`). Sections 1 to 3 record the API facts the live agent rests on, probed on 19 November 2026. Section 4 is the browser's security policy and storage; section 5 the world; section 6 how the engine reads the method; section 7 the agent in Live mode and its guardrails; section 8 Simulation and the session-cost estimate; section 9 the decisions and open points; sections 10 and 11 the verification log and the acceptance checklist.
 
 ---
 
@@ -12,9 +12,9 @@ Sources: Models overview and Pricing pages, `https://platform.claude.com/docs/en
 
 | Label | API model ID | Input $/MTok | Output $/MTok | 5-min cache write $/MTok | Cache read $/MTok | Effort | Max tokens per call |
 |---|---|---|---|---|---|---|---|
-| **Sonnet 5.5 — default** | `claude-sonnet-5-5` | 2.00 | 10.00 | 2.50 | 0.10 | medium | 16,000 |
-| Haiku 5.5 — fast, cheapest | `claude-haiku-5-5` | 0.10 (prompt ≤ 100k tok) / 0.50 (> 100k) | 0.50 / 2.50 | 0.125 / 0.625 | 0.01 / 0.05 | medium | 12,000 |
-| Opus 5.5 — deepest | `claude-opus-5-5` | 4.00 | 20.00 | 5.00 | 0.20 | high | 16,000 |
+| **Sonnet 5.5 (default)** | `claude-sonnet-5-5` | 2.00 | 10.00 | 2.50 | 0.10 | medium | 16,000 |
+| Haiku 5.5 (fast, cheapest) | `claude-haiku-5-5` | 0.10 (prompt ≤ 100k tok) / 0.50 (> 100k) | 0.50 / 2.50 | 0.125 / 0.625 | 0.01 / 0.05 | medium | 12,000 |
+| Opus 5.5 (deepest) | `claude-opus-5-5` | 4.00 | 20.00 | 5.00 | 0.20 | high | 16,000 |
 
 - All three have a 1M-token context and 128K output tokens; thinking is adaptive, and always on for Opus 5.5 (P5).
 - Haiku 5.5 is priced in two tiers by prompt size; the shared cost meter (`js/cost.js`) picks the tier per request.
@@ -140,7 +140,7 @@ The engine (`js/engine.js`, `js/history.js`, `js/fixpaths.js`, `js/cases.js`) is
 
 | Rule | Enforced by | What is refused |
 | --- | --- | --- |
-| 1. Data, not instructions | The system prompt; record texts reach the model only as JSON values | — |
+| 1. Data, not instructions | The system prompt; record texts reach the model only as JSON values | nothing: a rule of the prompt |
 | 2. Only the rules find exceptions | Every engine and screen tool takes only exceptions this run's `dq_scan` returned | Grouping before a scan; an exception id no scan found |
 | 3. Verified alert | `ui_report_alert` | A group under half its `dq_group` base; fewer than three of the case's records read with `erp_get_record` (all when fewer); for DQ-01, the covering contract not read. The card adds "Checked in this run:" from the tool results |
 | 4. AI suggestions | `dq_classify`, `ui_request_review` | Unknown taxonomy codes; words not in the line's short text; a line with a material. A suggestion is pending until a person approves it: unreviewed and rejected ones count as no suggestion, approved ones count in `dq_suggest`, `dq_fix_paths` and the change request |
@@ -148,8 +148,8 @@ The engine (`js/engine.js`, `js/history.js`, `js/fixpaths.js`, `js/cases.js`) is
 | 6. Drafts | `ui_draft_action` | Drafts before an approval, a kind the approved path does not allow (A: change request; B: one follow-up per routed-to person; C and D: those plus a prevention request; doing nothing: the risk memo), a second follow-up to the same person. Code adds the footer and the mock line, and the change request's table of records, fields, old and new values |
 | 7. Report | `ui_final_report` | A report while a decision or a draft is open, an outcome that does not follow the decision |
 | 8. Figure audit | Every alert, option text, review note, draft and report | A figure no tool returned (below). After two refusals the text shows with an *Unchecked* tag and a notice, never silently. Refusals count per text: a text that passes or shows with its tag resets its kind's count, so the follow-up to the next owner gets its own two refusals (review finding R10; Rebate Hunter counts per kind and run) |
-| 9. Narration | The system prompt keeps figures out; the steps describe each tool call in a plain sentence of their own (`js/steps_view.js`) | — |
-| 10. Budgets and stops | The loop above | — |
+| 9. Narration | The system prompt keeps figures out; the steps describe each tool call in a plain sentence of their own (`js/steps_view.js`) | nothing: a rule of the prompt |
+| 10. Budgets and stops | The loop above | a call past a cap |
 
 **Honesty in every text** (from version 1.0.0, review finding R5). Every alert, option text, review note, draft and the report is read sentence by sentence (`claimsClosed` in `js/tools.js`): a sentence that calls an exception closed, or says a fix closes it now, without naming the re-scan that would show it, is refused with the sentence quoted; "not closed", "nothing is closed yet" and "what a re-scan would close" pass. Before, only the report was read, and as a whole.
 
@@ -175,12 +175,12 @@ The engine (`js/engine.js`, `js/history.js`, `js/fixpaths.js`, `js/cases.js`) is
 
 | Scenario | Tool calls before the decision | Paths offered | Recommended | Review |
 | --- | --- | --- | --- | --- |
-| 1 Contract references lost in punch-out | 15 | A, B, C | C | — |
-| 2 Paying too early | 14 | A, B, C | C | — |
+| 1 Contract references lost in punch-out | 15 | A, B, C | C | none |
+| 2 Paying too early | 14 | A, B, C | C | none |
 | 3 Unclassified spend | 15 | A, B, C | C | 32 AI-suggested groups |
-| 4 Who ordered this? | 14 | B, D | D | — |
-| 5 New suppliers, half the data | 13 | B, D | D | — |
-| 6 Two Apexes? | 15 | B, D | D | — |
+| 4 Who ordered this? | 14 | B, D | D | none |
+| 5 New suppliers, half the data | 13 | B, D | D | none |
+| 6 Two Apexes? | 15 | B, D | D | none |
 
 **Playback** (`js/simulation.js`). The player runs the script through the same toolbox as the live agent, at once: there is no replay speed. It stops where a person acts (a review, the decision, each draft) and goes on when the presenter acts on screen, so every step shows as soon as the presenter moves to it. A deep link (`?step=4`, `?step=5`) plays the run up to that step; `?step=5` approves the recommended path on the way. The mode tag says SIMULATION; no key is asked for and no request leaves the page.
 
@@ -244,6 +244,14 @@ A partner review of version 1.0.0 found a prototype that proved everything and t
 | P11 | Names, not ids, and no tool names on screen (`js/plain.js`) | A newcomer reads people and cities, not U190 or a tool's name |
 | P12 | A text the figure audit refused twice shows with an *Unchecked* tag on its card, as before | Honesty survives the new screens |
 | P13 | Version 2.1.0: each step ends with a primary button that names where it leads (*Next: find the cause*); where the person must act, a merlot *Your turn* line says what to do and points at the action; after six seconds without a click or a key that action pulses, a still ring with reduced motion; the bar's Next is secondary | Victor, 20 November 2026: alone with the link, a viewer overlooks the Next button top right and does not see that it is their turn |
+| P14 | Version 2.2.0, answer first: before anything runs, the key figures show the default case as the engine works it out: €10,293 at stake a year, 0 of 23 records fixed, the clock at 0:00 beside the oldest flag's 62 days, and the estimated session cost. The case's script runs once in the background through the same tools (`previewFor` in `js/app.js`). *At stake a year* replaces *Cost avoided* (P3) | Victor's brief after the partner review, 22 November 2026: before Start the four tiles read €0, 0, 0:00 and €0.00, so the case had to be told before anyone could see it |
+| P15 | When the decision moves a figure, its tile keeps the old value struck through (Vici's `vc-stat__was`): €10,293 becomes €0 left a year, 0 becomes 23 of 23 records. An accepted risk strikes nothing and says the cost goes on | What the decision changes is the point of the demo; nobody should have to remember the figure before it |
+| P16 | SIMULATION in the header from the first screen, LIVE in a live run; under the header one sentence on what the agent does and that the data is fictional, then the byline. The footer is gone | Vici's prototype brief: what it is, whether the data is real and who built it, before anything else |
+| P17 | Where the page waits for a person, Vici's merlot *Your turn* callout stands right under what just happened, and the one primary action carries Vici's `vc-attention`: *Start the agent* on the first screen, *Approve all* or *Confirm* in the review, the recommended *Approve*, the first pending draft. A paused step's Next gets `vc-attention` after six quiet seconds. The page's own pulse (P13) is gone | One way of saying "your turn" across Victor's prototypes, from Vici |
+| P18 | Play: *Start the agent* plays the case. Each step stays as long as its words take to read (3 s plus 230 ms a word, between 7 and 14 s) while its rail and the bar along Next fill; Play waits wherever a person acts and reads on after; an open dialog holds it; Space pauses and plays; a step chosen by click, arrow key, clicker or `?step=` pauses it; the end offers Replay. A live run follows the agent instead | As in the Price Variance Agent: the presenter can talk while the page moves, and nothing moves past a decision |
+| P19 | The guide has four chapters: what it does; how it works, with a row for each key figure (what it measures and its value in the default case); with your data; and a talk track of four steps in five minutes. The separate key-figures chapter is gone | Vici's guide standard, and a shorter guide gets read |
+| P20 | The honeycomb names its fifteen rules in words, without codes such as DQ-07, and plain text replaces any code an agent writes (`ruleLabel` in `js/plain.js`) | A customer reads "Payment terms too short", not a code |
+| P21 | `vici/` is ViciDesign main, byte for byte, at the commit `vici/README.md` and the tests workflow name. `tests/vici.mjs` runs Vici's own checks (guide, byline, writing, AI notice), and the presenter suite runs Vici's check-guide-render.mjs (in ViciDesign) against the page | The page follows Vici's current rules, and any drift fails the tests |
 
 ### 9.4 Open for Victor
 
@@ -251,12 +259,24 @@ A partner review of version 1.0.0 found a prototype that proved everything and t
 |---|---|---|
 | AC-20 | Your own live run | With your key and Sonnet 5.5: on the tip, *Run it live*; decide and approve the drafts; then *Download the audit log* in Prepare. It names the model, the usage and the cost; the run stops by itself at 40 model calls or €3 |
 | AC-21 | The five-minute demo | `DEMO_SCRIPT.md`: before you start, the five minutes, what to do if something goes wrong and the questions that will come. Rehearse it once against the live site |
-| AC-22 | A review of the presenter | Version 1.0.0's independent review covered the figures, rules and honesty, which 2.0.0 keeps; the new screens have not been reviewed by an agent that did not build them. Ask for one before a customer sees it, or accept the risk |
-| D2 | The website's card | A pull request in VIP updates the card for version 1.0.0 (the note loses "Work in progress."); merge it once this version is live |
+| AC-22 | A review of the presenter | Version 1.0.0's independent review covered the figures, rules and honesty, which 2.0.0 to 2.2.0 keep. The 2.2.0 screens had a cold partner review at 1280 × 720 (the project's partner review), but no agent that did not build them has checked the figures on them. Ask for one before a customer sees it, or accept the risk |
+| D2 | The website's card | VIP's card says "Free simulation, no API key needed. Fictional company, no client data." (version 2.2.0) |
 | Live site | The check after the merge | The *live site* workflow runs after the Pages build of the merge and must end with LIVE SITE OK; nothing to do unless it fails |
+| D3 | Names, not record ids | Vici's main gained this rule on 22 November 2026 (ViciDesign#16, from Rebate Hunter 8.0.0), after this version's brief: a screen names records and never shows the ids of the data, and `recordIdProblems(text, ids)` lists any that still show. Measured on 2.2.0: steps 1 to 4 of the default case show none; ids still reach the screen inside the drafts' full text in all six cases (order lines such as 4500101077/10, contract 4600000102), and on Check and Propose of the punch-out case (contract 4600000101). Proposal for 2.3.0: `js/plain.js` names contracts and supplier accounts in the agent's words, the drafts list order lines by item and date (the audit log keeps the ids), and `tests/vici.mjs` runs `recordIdProblems` over every screen |
 | R17 | Doing nothing's yearly cost | The method costs a year's new exceptions at the case's average past cost (12 × *f* × *E* / *n*). In scenario 2 that is about €10,293 a year against €3,482 for the last 365 days, because the case gains 68 exceptions a year and holds 23. The card now says how the figure is costed. If you would rather cost only the share that stays open past the 14-day window, that is a change to the method (its fix-path table); I would make it in a later version |
 
 ## 10. Verification log
+
+**22 November 2026, version 2.2.0.** Answer first, Play and Vici's main (section 9.3, P14 to P21). Node.js 22.23.5; Playwright with Chromium for the browser suites; a ViciDesign checkout next to the repository at main's commit `d0203e3`. `node tests/run-all.mjs --require-vici`: ALL SUITES PASSED (16 of 16). No test called a real API; no key was used.
+
+| Suite | Result |
+| --- | --- |
+| presenter | 147 checks in eight cases (78 in 2.0.0, 92 in 2.1.0): steps (each step's named Next, the *Your turn* callouts with `vc-attention` on the one action, a paused step's Next marked after six idle seconds, reduced motion), play (the rail and Next filling, "Plays on in" beside it, a dialog holding Play, Space and a chosen step pausing it, the waits at the decision and the drafts, Replay), kpis (the engine's figures before anything runs at 1920 × 1080 and 1280 × 720 and with the guide open; the old values struck through after the decision), cases, paths, lean (10 controls on the first screen; no tool name, user id, rule code, em dash or broken value on any step or guide chapter), guide (opens once per tab, `?guide=0` and `?guide=present`, a row per key figure, four timed steps, every chapter fitting, and Vici's check-guide-render.mjs (in ViciDesign) against the page), layout (both sizes, both themes; the story fits without scrolling) |
+| vici | 38 checks: Vici's guide, byline, writing and AI-notice checks on the page, on 171 sentences the scripts put on screen in 18 runs of the six cases, on the presenter's 420 strings and on the six docs; the frame; `vici/` byte for byte at `d0203e3` |
+| live_ui | 50 checks: as in 2.1.0, with At stake a year struck through to what is left after a live run, and the AI notice by the step bar in place of Play |
+| the others | tokens (89 colour pairs in two themes), page-icon, vici-files, world, unit, engine, audit, tools, vat, policy, hygiene, docs (6 documents, 15 section citations, 97 named paths) and hexagon passed; the engine's suites are unchanged |
+
+**Screens.** A cold walk at 1280 × 720, light and dark, from the guide through the report, was looked at for the partner review. One defect was found and fixed: at 1280 × 720 the Check step's last line slid under the bar beneath it in five cases (22 to 42 px); the chain now sits tighter on short screens, and the layout case fails whenever a story needs scrolling.
 
 **20 November 2026, version 2.1.0.** The next action named in every step (section 9.3, P13). `node tests/run-all.mjs`: ALL SUITES PASSED (15 of 15). The presenter suite grew from 78 to 92 checks: the named Next on Spot, Check and Calculate and after the decision, each in view and the one primary button; the *Your turn* lines on the review, the decision and the drafts; the nudge after six idle seconds, calmed by a key; a still ring instead of the pulse with reduced motion. Screens at 1920 × 1080 in the light theme and 1280 × 720 in the dark theme were looked at for every step and the review.
 
@@ -276,9 +296,9 @@ A partner review of version 1.0.0 found a prototype that proved everything and t
 
 **Check digits.** `js/vat_check.js` agrees with python-stdnum 2.2 on 37,795 generated numbers across DE, AT, IT, NL, GB, CH, FR, ES and EL: no disagreement (run outside the repository on 19 November 2026).
 
-## 11. Acceptance checklist (version 2.1.0)
+## 11. Acceptance checklist (version 2.2.0)
 
-`node tests/run-all.mjs` runs every suite. AC-01 to AC-07 were met in version 0.1.0, AC-08 to AC-15 in version 0.2.0 and AC-16 to AC-23 in version 1.0.0; this table says how version 2.1.0 meets each, and adds AC-24 to AC-26 for the presenter.
+`node tests/run-all.mjs --require-vici` runs every suite, with a ViciDesign checkout next to this repository. AC-01 to AC-07 were met in version 0.1.0, AC-08 to AC-15 in version 0.2.0, AC-16 to AC-23 in version 1.0.0 and AC-24 to AC-26 in versions 2.0.0 and 2.1.0; this table says how version 2.2.0 meets each, and adds AC-27 to AC-29.
 
 | # | Criterion | Proven by | Status |
 |---|---|---|---|
@@ -295,16 +315,19 @@ A partner review of version 1.0.0 found a prototype that proved everything and t
 | AC-11 | No 41st model call; none once €3 is spent; Session cost shows usage × price | `node tests/live_ui.mjs caps run` | met |
 | AC-12 | The six cases play offline without a key, with the engine's figures, along the recommended path; the default case also after a rejection, with the accepted risk and with every path rejected | `node tests/presenter.mjs cases paths` | met |
 | AC-13 | `tools/check_world.mjs` passes every simulation script under the live guardrails | `node tools/check_world.mjs`; the world suite's planted violations | met |
-| AC-14 | The key figures show the engine's numbers: Records fixed and Cost avoided equal the approved path's figures computed in Node, for every case | `node tests/presenter.mjs kpis cases` | met |
+| AC-14 | The key figures show the engine's numbers: Records fixed and At stake a year equal the approved path's figures computed in Node, for every case | `node tests/presenter.mjs kpis cases` | met |
 | AC-15 | Nothing reads closed before a re-scan: an approved path shows *Approved, re-scan pending*, and Records fixed says *projected after re-scan* or *expected, from history* | `node tests/presenter.mjs kpis`; `node tests/tools.mjs` | met |
 | AC-16 | The audit log downloads with its name and mode, holds the run's decisions and cost, and validates against `AuditExport` with the app's validator | `node tests/live_ui.mjs run` | met |
 | AC-17 | At 1920 × 1080 and 1280 × 720, both themes, every step of the default case: no page scrolling, the step's main action in view and uncovered, no key figure cut | `node tests/presenter.mjs layout` | met |
 | AC-18 | The four shared design tests pass: contrast in both themes for every pairing the app uses; nothing round; the page icon; `vici/` matching its release | `node tests/run-all.mjs tokens hexagon page-icon vici-files` | met |
-| AC-19 | Start and the recommended Approve are reached by Tab and work with Enter, with a visible focus ring; the arrow keys move between steps; reduced motion stops the figures' flip | `node tests/presenter.mjs steps` | met |
+| AC-19 | Start and the recommended Approve are reached by Tab and work with Enter, with a visible focus ring; the arrow keys move between steps; reduced motion stops the figures' flip and the movement of `vc-attention` | `node tests/presenter.mjs steps` | met |
 | AC-20 | Victor runs one case live with his key, end to end within the caps; the audit log shows model, usage and cost | Victor, with his key (section 9.4); `tests/live_ui.mjs run` proves the fields against the stand-in | open: Victor's run |
 | AC-21 | Victor gives the five-minute demo without help | Victor, with `DEMO_SCRIPT.md` (section 9.4) | open: Victor's demo |
 | AC-22 | An agent that did not build the prototype reviews figures, rules, honesty rules and the UI; no high or medium finding stays open | Version 1.0.0's review (git history) for figures, rules and honesty | open for the 2.0.0 screens (section 9.4) |
 | AC-23 | README, DESIGN, TECH_NOTES, DATA_SOURCES and DEMO_SCRIPT complete and lean; `tests/hygiene.mjs` passes | `node tests/docs.mjs`; `node tests/hygiene.mjs` | met |
-| AC-24 | The guide follows Vici: it opens by itself once per tab, explains the four key figures, and its talk track quotes the engine's figures for the default case | `node tests/presenter.mjs kpis`; Vici's guide check (check-guide-render in the ViciDesign repository) against the page | met |
-| AC-25 | The first screen offers at most 12 controls; no step shows a tool name, a user id, an em dash or a broken value | `node tests/presenter.mjs lean` | met |
-| AC-26 | Every step says what to do next where the reading ends: a Next button that names where it leads, in view at 1920 × 1080 and 1280 × 720, or a *Your turn* line where the person must act; that action pulses after six idle seconds, without motion when reduced motion is set | `node tests/presenter.mjs steps paths layout` | met |
+| AC-24 | The guide follows Vici: it opens by itself once per tab and not on a reload; `?guide=0` and `?guide=present` work; How it works has a row for each key figure; it ends with a talk track of four timed steps that quotes the engine's figures; every chapter fits 1280 × 720 | `node tests/presenter.mjs guide kpis`, whose guide case runs Vici's check-guide-render.mjs (in ViciDesign) against the page; `node tests/vici.mjs` | met |
+| AC-25 | The first screen offers at most 12 controls; no step or guide chapter shows a tool name, a user id, a rule code, an em dash or a broken value | `node tests/presenter.mjs lean`; `node tests/vici.mjs` for every sentence the scripts write | met |
+| AC-26 | Every step says what to do next where the reading ends: a Next button that names where it leads, in view at 1920 × 1080 and 1280 × 720, or Vici's *Your turn* callout where the person must act, with the action marked by `vc-attention`; a paused step's Next gets `vc-attention` after six idle seconds; with reduced motion it does not move | `node tests/presenter.mjs steps paths layout` | met |
+| AC-27 | Answer first: before anything runs, the four key figures top right show the engine's figures for the case (the stake a year, the records, the clock beside the oldest flag's wait, the estimated session cost), at 1920 × 1080 and 1280 × 720 and with the guide open. After the decision a moved figure keeps its old value struck through (`vc-stat__was`) | `node tests/presenter.mjs kpis cases paths`; `node tests/live_ui.mjs run` for a live run | met |
+| AC-28 | Play walks the steps by itself, 7 to 14 seconds each with the rail filling, stops wherever the person acts and reads on after, holds while a dialog is open, pauses on Space or a chosen step, and ends on Replay | `node tests/presenter.mjs play` | met |
+| AC-29 | Vici's own checks pass: `guideProblems`, `bylineProblems`, `writingProblems` and `aiNoticeProblems` on the page, the scripts' sentences on three paths of all six cases and the docs; SIMULATION or LIVE in the header, one sentence and the byline under it; `vici/` equals ViciDesign main byte for byte at the commit `vici/README.md` and the workflow name | `node tests/vici.mjs --require-vici` | met |

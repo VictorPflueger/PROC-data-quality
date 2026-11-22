@@ -1,7 +1,8 @@
 // What each step shows: the tip, Spot, Check, Calculate, Propose and Prepare, drawn from the run model
 // (js/run_model.js). Every figure is the engine's (a tool result, the alert, the options) or the world's;
-// the agent's own words carry the lilac AI tag; ids become names (js/plain.js). One render per change:
-// js/app.js keeps focus and the reason being typed across renders.
+// the agent's own words carry the lilac AI tag; ids and rule codes become names (js/plain.js). One render
+// per change: js/app.js keeps focus and the reason being typed across renders. Elements marked data-read
+// hold the words Play gives a step time to read (js/app.js).
 
 import { h } from "./dom.js";
 import { renderMarkdown } from "./md.js";
@@ -9,7 +10,7 @@ import { euro, int, pct1 } from "./format.js";
 import { RULES } from "./rules.js";
 import { itemsOf, lastResult, approved, rejectedIds } from "./run_model.js";
 import { scanFacts, ageOf, recordsWord, severityTone } from "./facts.js";
-import { plainText, personLine, personName, scopeText, ruleName } from "./plain.js";
+import { plainText, personLine, personName, scopeText, ruleLabel } from "./plain.js";
 import { KIND_LABELS } from "./drafts.js";
 
 const icon = (name) => h("span", { class: `vc-icon vc-icon--${name}`, "aria-hidden": "true" });
@@ -23,14 +24,6 @@ const spell = (n) => WORDS[n] || int(n);
 const plural = (n, one, many) => `${int(n)} ${n === 1 ? one : many}`;
 const strip = (t) => String(t || "").replace(/^\s*(\*\*)?(hypothesis|revised|revision|finding|check|confirmed)\s*:\s*(\*\*)?\s*/i, "").replace(/^./, (c) => c.toUpperCase());
 
-// Short names for the honeycomb's cells, from the rules' own names.
-const SHORT = {
-  "DQ-01": "Contract ref missing", "DQ-02": "Material group missing", "DQ-03": "Group differs from master",
-  "DQ-04": "Requester missing", "DQ-05": "Requester had left", "DQ-06": "Payment terms missing",
-  "DQ-07": "Payment terms too short", "DQ-08": "Blocked supplier", "DQ-09": "No terms in company code",
-  "DQ-10": "VAT ID wrong or missing", "DQ-11": "Bank missing or foreign", "DQ-12": "Duplicate supplier",
-  "DQ-13": "Material without group", "DQ-14": "Contract owner gone", "DQ-15": "Contract not valid"
-};
 // Order lines first, then suppliers, materials and contracts: five columns, three rows.
 const HIVE_ORDER = ["DQ-01", "DQ-02", "DQ-03", "DQ-04", "DQ-05", "DQ-06", "DQ-07", "DQ-08", "DQ-15", "DQ-09", "DQ-10", "DQ-11", "DQ-12", "DQ-13", "DQ-14"];
 
@@ -46,7 +39,7 @@ export function renderStep(stage, n, run, ctx) {
 function agentWords(items, world) {
   const texts = items.filter((x) => (x.kind === "say" || x.kind === "reasoning" || x.kind === "finding" || x.kind === "recommendation") && x.text);
   if (!texts.length) return null;
-  return h("div", { class: "ai-words" }, aiTag(), texts.slice(-3).map((x) => h("p", {}, strip(plainText(world, x.text)))));
+  return h("div", { class: "ai-words" }, aiTag(), texts.slice(-3).map((x, i) => h("p", i === 0 ? { dataset: { read: "" } } : {}, strip(plainText(world, x.text)))));
 }
 
 function did(run, n, world) {
@@ -71,7 +64,7 @@ function toolSentence(x, world) {
   const r = x.result || {};
   switch (x.name) {
     case "erp_get_overview": return "Read the company's data and the rule catalogue";
-    case "dq_scan": return `Ran ${i.rules && i.rules.length && i.rules.length < 15 ? i.rules.map(ruleName).join(", ") : "all fifteen rules"} over ${scopeText(world, i.filters)} and compared the result with the exception log`;
+    case "dq_scan": return `Ran ${i.rules && i.rules.length && i.rules.length < 15 ? i.rules.map(ruleLabel).join(", ") : "all fifteen rules"} over ${scopeText(world, i.filters)} and compared the result with the exception log`;
     case "dq_group": {
       const by = (i.by || []).map((k) => KEY_WORDS[k] || k).join(" and ");
       if (!r.groups_total) return `Grouped them by ${by}`;
@@ -96,31 +89,37 @@ function waiting(text) {
 }
 
 // ---- what to do next ------------------------------------------------------------------------------
-// Every step says what to do next where the reading ends: a Next button that names where it leads, or,
-// where the person must act, a "Your turn" line beside the action. After a few idle seconds the action
-// pulses (js/app.js sets data-nudge on the stage; the class "nudge" marks what pulses).
+// Every step says what to do next right under the story's last line: a bar with a few words ("Plays on
+// in 8 s" while Play reads the step, "Your move" while paused) and the step's one primary action, which
+// names where it leads. Where the person must act, Vici's merlot "Your turn" callout stands right under
+// what just happened, and the action it asks for carries vc-attention. js/app.js updates the words and
+// the fill of the bar while Play runs, and adds vc-attention to a paused step's action after a few quiet
+// seconds.
 
-const NEXT = { 1: "Next: find the cause", 2: "Next: what it costs", 3: "Next: your decision", 4: "Next: the drafts" };
+const NEXT = { 0: "Next: what the rules find", 1: "Next: find the cause", 2: "Next: what it costs", 3: "Next: your decision", 4: "Next: the drafts" };
 const reachable = (run, n) => run.status !== "idle" && Math.max(1, run.reached) >= n;
 
-function nextButton(n, handlers, label = NEXT[n]) {
-  return h("button", { type: "button", class: "vc-button cta nudge", id: "btn-cta", on: { click: () => handlers.onGo(n + 1) } }, label, icon("chevron-right"));
+function nextButton(n, ctx, label = NEXT[n]) {
+  return h("button", { type: "button", class: ["vc-button", "cta", ctx.play?.attention ? "vc-attention" : ""], id: "btn-cta", on: { click: () => ctx.handlers.onNext(n + 1) } }, label, icon("chevron-right"));
 }
 
+/** Vici's merlot callout: whose turn it is and, in one sentence, what to do. */
 function yourTurn(text, ...extra) {
-  return h("p", { class: "your-turn", role: "status" }, h("span", { class: "vc-tag vc-tag--solid your-turn__tag" }, "Your turn"), h("span", { class: "your-turn__text" }, text), ...extra);
+  return h("div", { class: ["vc-callout", "turn", extra.length ? "turn-bar" : ""], role: "status" },
+    h("span", { class: "vc-callout__cell", "aria-hidden": "true" }, icon("hand")),
+    h("div", { class: "vc-callout__body" }, h("p", { class: "vc-callout__title" }, "Your turn"), h("p", {}, text)),
+    ...extra);
 }
 
-/** The foot of a step's story: the Next button, the person's turn, or the agent still at work. */
+/** The bar under a step's story: what happens next, in words, and the step's action. */
 function storyFoot(run, n, ctx) {
   let body = null;
-  if (n === 2 && run.review && !run.review.decision && run.waiting === "review") body = yourTurn("Check the AI's suggestions, then confirm them.", icon("arrow-right"));
-  else if (reachable(run, n + 1)) body = nextButton(n, ctx.handlers);
-  else if (run.status === "running") body = waiting("The agent is working on the next step.");
+  if (reachable(run, n + 1)) body = [h("p", { class: "foot-note", id: "foot-note", dataset: { tone: ctx.play?.on ? "" : "move" } }, ctx.play?.on ? "" : "Your move"), nextButton(n, ctx)];
+  else if (run.status === "running") body = [waiting("The agent is working on the next step.")];
   return body ? h("div", { class: "story-foot" }, body) : null;
 }
 
-function hive(world, scan, caseRules) {
+function hive(world, scan, caseRules, { title = true } = {}) {
   const facts = scan ? scanFacts(world, scan) : null;
   const scanned = new Set(scan ? (scan.rules && scan.rules.length ? scan.rules : RULES.map((r) => r.id)) : []);
   const cells = HIVE_ORDER.map((id, k) => {
@@ -133,11 +132,10 @@ function hive(world, scan, caseRules) {
     return h("li", {
       class: "hex", dataset: { state, rule: id, case: caseRules?.has(id) ? "true" : "false" },
       style: { "--col": String(col), "--row": String(row), "--odd": String(col % 2) },
-      "aria-label": `${id} ${ruleName(id)}: ${label}`
+      "aria-label": `${ruleLabel(id)}: ${label}`
     }, h("span", { "aria-hidden": "true" },
-      h("span", { class: "hex-id" }, mark, id),
-      h("span", { class: "hex-n" }, state === "idle" ? "·" : int(count)),
-      h("span", { class: "hex-name" }, SHORT[id] || ruleName(id))));
+      state === "idle" ? null : h("span", { class: "hex-n" }, mark, int(count)),
+      h("span", { class: "hex-name" }, ruleLabel(id))));
   });
   const legend = h("ul", { class: "hive-legend", "aria-hidden": "true" },
     h("li", {}, h("i", { dataset: { state: "danger" } }), "High severity, open"),
@@ -146,7 +144,7 @@ function hive(world, scan, caseRules) {
     h("li", {}, h("i", { dataset: { state: "idle" } }), scan ? "Not in this scan" : "Not scanned yet"),
     caseRules && caseRules.size ? h("li", {}, h("i", { dataset: { state: "case" } }), "In the case") : null);
   return h("div", { class: "hive-wrap" },
-    h("p", { class: "hive-title" }, "The fifteen rules"),
+    title ? h("p", { class: "hive-title" }, "The fifteen rules") : null,
     h("ul", { class: "hive", "aria-label": "The fifteen rules and what they found", role: "list" }, cells),
     legend);
 }
@@ -159,24 +157,24 @@ function tipStep(run, ctx) {
   const select = h("select", { class: "vc-select", id: "case-select", on: { change: (e) => handlers.onCase(e.target.value) } },
     scenarios.map((s) => h("option", { value: s.id, selected: s.id === scenario.id }, s.title)));
   const n = (rows) => int((rows || []).length);
+  const live = h("p", { class: "live-row" },
+    h("button", { class: "vc-button vc-button--secondary", type: "button", id: "btn-live", dataset: { vcLive: "" }, on: { click: () => handlers.onStart("live") } }, icon("key"), "Run it live"),
+    h("span", { class: "vc-tag vc-tag--feature ai-notice" }, icon("sparkle"), "You are interacting with an AI system"));
+  const start = h("button", { class: ["vc-button", "cta", "vc-attention"], type: "button", id: "btn-start", on: { click: () => handlers.onStart("simulation") } }, icon("play"), "Start the agent");
   return h("section", { class: "step", "aria-labelledby": "step-title" },
     h("div", { class: "panel story" },
       h("div", { class: "case-pick" }, h("label", { class: "vc-label", for: "case-select" }, "Case"), select),
       h("h2", { class: "sr-title", id: "step-title" }, "The tip"),
       h("p", { class: "tip-from" }, `A tip came in. ${scenario.hint}.`),
-      h("blockquote", { class: "tip-quote" }, `“${scenario.tip}”`),
-      h("p", { class: "step-lead" }, "That sentence is all the agent gets. It works out the rest from the company's data."),
-      h("div", { class: "start-row" },
-        h("button", { class: ["vc-button", started ? "" : "nudge"], type: "button", id: "btn-start", on: { click: () => handlers.onStart("simulation") } }, icon(started ? "refresh" : "play"), started ? "Start again" : "Start the agent"),
-        h("button", { class: "vc-button vc-button--secondary", type: "button", id: "btn-live", on: { click: () => handlers.onStart("live") } }, icon("key"), "Run it live")),
-      h("p", { class: "step-note" }, "Start plays a scripted run of the agent through the real rules and engine: free, no key, works offline. Run it live calls Claude with your own API key.")),
+      h("blockquote", { class: "tip-quote", dataset: { read: "" } }, `“${scenario.tip}”`),
+      h("p", { class: "step-lead", dataset: { read: "" } }, "That sentence is all the agent gets. It works out the rest from the company's data."),
+      started
+        ? [h("p", { class: "restart-row" }, h("button", { class: "vc-button vc-button--ghost", type: "button", id: "btn-restart-tip", on: { click: () => handlers.onStart("simulation") } }, icon("refresh"), "Start again")), storyFoot(run, 0, ctx)]
+        : yourTurn("Hand the agent this tip; it waits for you at every decision.", start),
+      live),
     h("div", { class: "panel data-card" },
-      h("h2", {}, "What the agent can check"),
-      h("ul", { class: "facts" },
-        h("li", {}, h("span", { class: "fact-value" }, n(world.po_lines)), h("span", { class: "fact-text" }, "order lines from the last 365 days")),
-        h("li", {}, h("span", { class: "fact-value" }, n(world.suppliers)), h("span", { class: "fact-text" }, `suppliers, ${n(world.materials)} materials and ${n(world.contracts)} contracts`)),
-        h("li", {}, h("span", { class: "fact-value" }, n(world.users)), h("span", { class: "fact-text" }, "people who buy, request and approve"))),
-      hive(world, null, null)));
+      h("p", { class: "data-line" }, "Fifteen rules check ", h("strong", {}, n(world.po_lines)), " order lines from the last 365 days, ", h("strong", {}, n(world.suppliers)), " suppliers, ", h("strong", {}, n(world.materials)), " materials and ", h("strong", {}, n(world.contracts)), " contracts."),
+      hive(world, null, null, { title: false })));
 }
 
 // ---- step 1: Spot -------------------------------------------------------------------------------------
@@ -202,7 +200,7 @@ function spotStep(run, ctx) {
   return h("section", { class: "step" },
     h("div", { class: "panel story" },
       h("h2", { class: "step-title", id: "step-title" }, title),
-      h("p", { class: "step-lead" }, `It ran ${scanned >= 15 ? "all fifteen rules" : `${spell(scanned)} of the fifteen rules`} over ${scope === "all the data" ? "all the data" : `the data of ${scope}`}. An exception is a record that breaks a rule.`),
+      h("p", { class: "step-lead", dataset: { read: "" } }, `It ran ${scanned >= 15 ? "all fifteen rules" : `${spell(scanned)} of the fifteen rules`} over ${scope === "all the data" ? "all the data" : `the data of ${scope}`}. An exception is a record that breaks a rule.`),
       agentWords(items, world),
       h("ul", { class: "facts" },
         h("li", {}, h("span", { class: "fact-value" }, euro(f.spend)), h("span", { class: "fact-text" }, `of orders on these ${plural(f.lines, "line", "lines")}`)),
@@ -235,7 +233,7 @@ function checkStep(run, ctx) {
       h("span", { class: "chain-label" }, label, kind === "hypothesis" || kind === "revised" || kind === "say" ? " (AI)" : ""),
       h("p", { class: "chain-text" }, text)))) : waiting("The agent is testing a cause."),
     !alert && run.status === "running" && run.waiting !== "review" && chain.length ? waiting("Still checking.") : null,
-    storyFoot(run, 2, ctx));
+    run.waiting === "review" ? null : storyFoot(run, 2, ctx));
   let right;
   if (run.review && (!run.review.decision || !alert)) right = reviewPanel(run, ctx);
   else if (alert) right = caseCard(alert, world, run);
@@ -249,7 +247,7 @@ function caseCard(alert, world, run) {
   return h("div", { class: "panel case-card" },
     h("div", { class: "case-head" }, h("h3", {}, "The case"), h("span", { class: "head-tags" }, uncheckedTag(alert.unchecked), aiTag())),
     h("dl", { class: "case-rows" },
-      h("div", {}, h("dt", {}, "Root cause"), h("dd", {}, plainText(world, alert.root_cause))),
+      h("div", {}, h("dt", {}, "Root cause"), h("dd", { dataset: { read: "" } }, plainText(world, alert.root_cause))),
       h("div", {}, h("dt", {}, "Fix at the source"), h("dd", {}, plainText(world, alert.fix_at_source))),
       h("div", {}, h("dt", {}, "Who must act"), h("dd", {}, h("ul", { class: "people" }, (alert.routing || []).map((r) =>
         h("li", {}, h("span", { class: "vc-avatar vc-avatar--xs", "aria-hidden": "true" }, initials(personName(world, r.person))), h("span", {}, personLine(world, r.person)), h("span", { class: "count" }, plural(r.count, "exception", "exceptions"))))))),
@@ -266,10 +264,12 @@ function reviewPanel(run, ctx) {
   const done = !!run.review.decision;
   const choice = ui.review || (ui.review = new Map());
   const decided = items.filter((it) => choice.has(it.line_id)).length;
+  const all = decided >= items.length;
   const row = (it) => {
     const c = done ? (run.review.decision.decisions || []).find((d) => d.line_id === it.line_id)?.decision : choice.get(it.line_id);
+    // A pressed choice looks pressed, not primary: the step keeps one primary action.
     const btn = (value, label) => h("button", {
-      type: "button", class: ["vc-button", "vc-button--sm", c === value ? "" : "vc-button--ghost"], "aria-pressed": c === value ? "true" : "false", disabled: done,
+      type: "button", class: ["vc-button", "vc-button--sm", c === value ? "vc-button--secondary" : "vc-button--ghost"], "aria-pressed": c === value ? "true" : "false", disabled: done,
       dataset: { action: value === "approved" ? "approve" : "reject" },
       on: { click: () => { choice.set(it.line_id, value); handlers.onRerender(); } }
     }, label);
@@ -282,15 +282,16 @@ function reviewPanel(run, ctx) {
   return h("div", { class: "panel review" },
     h("div", { class: "case-head" }, h("h3", {}, done ? "Your review" : `Your review: ${plural(items.length, "suggestion", "suggestions")} by the AI`), h("span", { class: "head-tags" }, uncheckedTag(req.unchecked), aiTag())),
     h("p", { class: "step-note" }, "Free-text order lines have no material group. The agent suggests one from the words of each line; only what you approve counts."),
+    done ? null : yourTurn(all ? "Every line is decided: confirm the review." : "Approve or reject each suggestion, then confirm."),
+    done ? null : h("div", { class: "review-actions" },
+      h("button", { type: "button", class: ["vc-button", all ? "vc-button--secondary" : "vc-attention"], id: "btn-review-all", on: { click: () => { for (const it of items) choice.set(it.line_id, "approved"); handlers.onRerender(); } } }, "Approve all"),
+      h("button", {
+        type: "button", class: ["vc-button", all ? "vc-attention" : "vc-button--secondary"], id: "btn-review-confirm", disabled: !all,
+        on: { click: () => handlers.onReview(req.review_id, items.map((it) => ({ line_id: it.line_id, decision: choice.get(it.line_id) }))) }
+      }, icon("check"), all ? "Confirm review" : `Confirm (${int(items.length - decided)} to decide)`)),
     h("div", { class: "vc-table-wrap" }, h("table", { class: "vc-table vc-table--compact review-table" },
       h("thead", {}, h("tr", {}, h("th", { scope: "col" }, "Order line text"), h("th", { scope: "col" }, "Suggested group"), h("th", { scope: "col" }, "Confidence"), h("th", { scope: "col" }, "Your call"))),
-      h("tbody", {}, items.map(row)))),
-    done ? null : h("div", { class: "review-actions" },
-      h("button", { type: "button", class: ["vc-button", "vc-button--secondary", decided < items.length ? "nudge" : ""], id: "btn-review-all", on: { click: () => { for (const it of items) choice.set(it.line_id, "approved"); handlers.onRerender(); } } }, "Approve all"),
-      h("button", {
-        type: "button", class: ["vc-button", decided < items.length ? "" : "nudge"], id: "btn-review-confirm", disabled: decided < items.length,
-        on: { click: () => handlers.onReview(req.review_id, items.map((it) => ({ line_id: it.line_id, decision: choice.get(it.line_id) }))) }
-      }, icon("check"), decided < items.length ? `Confirm (${int(items.length - decided)} to decide)` : "Confirm review")));
+      h("tbody", {}, items.map(row)))));
 }
 
 // ---- step 3: Calculate --------------------------------------------------------------------------------
@@ -374,7 +375,7 @@ function proposeStep(run, ctx) {
         : status === "rejected" ? h("p", { class: "opt-status" }, "Rejected")
           : status === "closed" ? null
             : h("div", { class: "opt-actions" },
-              h("button", { type: "button", class: ["vc-button", opt.recommended ? "nudge" : "vc-button--secondary"], dataset: { action: "approve" }, disabled: !open, on: { click: () => handlers.onDecide(opt.id, "approved") } }, "Approve"),
+              h("button", { type: "button", class: ["vc-button", opt.recommended ? (open ? "vc-attention" : "") : "vc-button--secondary"], dataset: { action: "approve" }, disabled: !open, on: { click: () => handlers.onDecide(opt.id, "approved") } }, "Approve"),
               h("button", { type: "button", class: "vc-button vc-button--ghost", dataset: { action: "reject" }, disabled: !open, on: { click: () => handlers.onDecide(opt.id, "rejected") } }, "Reject")));
   });
   const nf = o.nothing?.figures || {};
@@ -401,14 +402,15 @@ function proposeStep(run, ctx) {
     : `Your decision: ${spell(o.options.length)} ways to fix it, or do nothing`;
   const recText = `The agent recommends ${rec ? `path ${rec.id}` : "a path"}; its words are AI, every figure is the engine's.`;
   let head;
-  if (ok) head = [h("p", { class: "step-note" }, "Watch the figures top right. Nothing counts as fixed until a re-scan stops finding it.")];
-  else if (open) head = [yourTurn("Approve one way to fix it, or accept the risk.", icon("arrow-down")), h("p", { class: "step-note note-line" }, recText, aiTag(), uncheckedTag(o.unchecked))];
+  if (ok) head = [h("p", { class: "step-note", dataset: { read: "" } }, "Watch the figures top right. Nothing counts as fixed until a re-scan stops finding it.")];
+  else if (open) head = [h("div", { class: "decide-asks" }, yourTurn("Approve one way to fix it, or accept the risk."), h("p", { class: "step-note note-line" }, recText, aiTag(), uncheckedTag(o.unchecked)))];
   else head = [h("p", { class: "step-note note-line" }, recText, aiTag(), uncheckedTag(o.unchecked))];
+  const after = (ok || run.report) && reachable(run, 5)
+    ? h("div", { class: "story-foot decide-foot" }, h("p", { class: "foot-note", id: "foot-note", dataset: { tone: ctx.play?.on ? "" : "move" } }, ctx.play?.on ? "" : "Your move"), nextButton(4, ctx, ok ? NEXT[4] : "Next: the report"))
+    : ok && run.status === "running" ? waiting("The agent is drafting.") : null;
   return h("section", { class: "step step--wide" },
     h("div", { class: "decide-head" },
-      h("div", { class: "decide-text" }, h("h2", { class: "step-title", id: "step-title" }, title), head),
-      (ok || run.report) && reachable(run, 5) ? nextButton(4, handlers, ok ? NEXT[4] : "Next: the report")
-        : ok && run.status === "running" ? waiting("The agent is drafting.") : null),
+      h("div", { class: "decide-text" }, h("h2", { class: "step-title", id: "step-title" }, title), head, after)),
     h("div", { class: "options", style: { "--n": String(cards.length) } }, cards));
 }
 
@@ -434,7 +436,7 @@ function prepareStep(run, ctx) {
       h("details", {}, h("summary", {}, "Show the full draft"), renderMarkdown(body)),
       d.status === "pending"
         ? h("div", { class: "draft-actions" },
-          h("button", { type: "button", class: ["vc-button", d.action_id === firstPending ? "nudge" : ""], dataset: { action: "approve" }, on: { click: () => handlers.onDraft(d.action_id, "approved") } }, "Approve"),
+          h("button", { type: "button", class: ["vc-button", d.action_id === firstPending ? "vc-attention" : "vc-button--secondary"], dataset: { action: "approve" }, on: { click: () => handlers.onDraft(d.action_id, "approved") } }, "Approve"),
           h("button", { type: "button", class: "vc-button vc-button--ghost", dataset: { action: "reject" }, on: { click: () => handlers.onDraft(d.action_id, "rejected") } }, "Reject"))
         : h("p", { class: "draft-status" }, d.status === "approved" ? "Approved. Not sent: this page has no email or ERP connection." : "Rejected"));
   });
@@ -446,8 +448,8 @@ function prepareStep(run, ctx) {
         h("button", { type: "button", class: "vc-button vc-button--secondary", id: "btn-audit", on: { click: () => handlers.onDownloadAudit() } }, icon("download"), "Download the audit log"),
         h("button", { type: "button", class: "vc-button vc-button--ghost", id: "btn-restart", on: { click: () => handlers.onRestart() } }, icon("refresh"), "Start again")))
     : null;
-  const note = run.report ? h("p", { class: "step-note" }, "Every decision is in the audit log.")
-    : pending ? yourTurn("Approve or reject each draft. Approving sends nothing; the report follows.", icon("arrow-down"))
+  const note = run.report ? h("p", { class: "step-note", dataset: { read: "" } }, "Every decision is in the audit log.")
+    : pending ? yourTurn("Approve or reject each draft. Approving sends nothing; the report follows.")
       : h("p", { class: "step-note" }, run.status === "running" ? "The agent is still at work." : "This run ended without a report.");
   return h("section", { class: "step step--wide" },
     h("div", { class: "decide-head" }, h("div", { class: "decide-text" },

@@ -86,7 +86,10 @@ async function startLive(page) {
   await page.waitForFunction(() => !document.querySelector("#live-dialog[open]"), null, { timeout: 15000 });
 }
 const status = (page) => page.evaluate(() => window.__dq?.state?.run?.status || "none");
-const kpi = (page, id) => page.$eval(`#kpi-${id}`, (e) => ({ value: e.querySelector(".kpi-value").textContent.trim(), unit: e.querySelector(".kpi-unit").textContent.trim(), note: e.querySelector(".kpi-note").textContent.trim() }));
+const kpi = (page, id) => page.$eval(`#kpi-${id}`, (e) => {
+  const was = e.querySelector(".kpi-was");
+  return { was: was && !was.hidden ? was.textContent.trim() : "", value: e.querySelector(".kpi-value").textContent.trim(), unit: e.querySelector(".kpi-unit").textContent.trim(), note: e.querySelector(".kpi-note").textContent.trim() };
+});
 
 /** Takes the presenter's part until the run ends: the recommended path, every draft approved. */
 async function drive(page, { timeout = 90000 } = {}) {
@@ -149,13 +152,17 @@ if (chosen.includes("run")) {
     // The run starts once the dialog has closed and the page draws on the next frame.
     const live = await page.waitForFunction(() => document.getElementById("mode-tag")?.textContent.trim() === "LIVE" && !document.getElementById("mode-tag").hidden, null, { timeout: 5000 }).then(() => true, () => false);
     ok(c, "a live run shows LIVE", live, await page.locator("#mode-tag").textContent());
+    ok(c, "a live run shows the AI notice by the step bar and offers no Play", await page.evaluate(() => !document.getElementById("live-notice").hidden && /You are interacting with an AI system/.test(document.getElementById("live-notice").textContent) && document.getElementById("btn-play").hidden));
     const end = await drive(page);
     ok(c, "the live run ends well", end === "done", end);
     ok(c, "every scripted turn was requested, no more", fake.requests.length === built.turns.length, `${fake.requests.length} of ${built.turns.length}`);
     ok(c, "the page followed the agent to the report", (await page.$eval('.stepbar .vc-step__button[aria-current="step"]', (b) => b.dataset.step)) === "5" && (await page.locator("#step-title").textContent()).trim() === "Done. Nothing was sent.");
     const fixed = await kpi(page, "fixed");
     const cost = await kpi(page, "cost");
-    ok(c, "Records fixed and Cost avoided show the engine's figures", fixed.value === int(rec.figures.closed) && cost.value === euro(rec.figures.future_avoided_eur_per_year), `${fixed.value} ${cost.value}`);
+    // At stake a year: the engine's yearly cost if nothing changes, struck through for what the approved path leaves.
+    const stake = Number(built.options.nothing?.figures?.gains_cost_eur_per_year) || 0;
+    const left = stake - Math.min(stake, Number(rec.figures.future_avoided_eur_per_year) || 0);
+    ok(c, "Records fixed and At stake a year show the engine's figures", fixed.value === int(rec.figures.closed) && stake > 0 && cost.was === euro(stake) && cost.value === euro(left), `${fixed.value} ${cost.was} → ${cost.value} (engine: ${euro(stake)} → ${euro(left)})`);
     const session = await kpi(page, "session");
     const expected = built.turns.length * turnEur(TURN_USAGE);
     ok(c, "Session cost shows the measured cost, usage × price", session.value === euroCents(expected) && /measured/.test(session.note), `${session.value} (${session.note}) vs ${euroCents(expected)}`);

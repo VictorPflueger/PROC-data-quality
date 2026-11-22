@@ -27,75 +27,80 @@
   <header class="app-header">
     <div class="brand">
       <span class="vc-cell vc-cell--lilac" aria-hidden="true"><span class="vc-icon vc-icon--check"></span></span>
-      <div class="brand-text">
-        <span class="brand-name">Data Quality Agent</span>
-        <span class="brand-sub">Procurement data at GlobalCorp SE</span>
-      </div>
+      <span class="brand-name">Data Quality Agent</span>
     </div>
     <div class="header-actions">
-      <span id="mode-tag" class="vc-tag mode-tag" role="status" hidden></span>
-      <button type="button" class="vc-button vc-button--secondary vc-button--sm" id="btn-guide" data-vc-guide-open="guide"><span class="vc-icon vc-icon--info" aria-hidden="true"></span>How it works</button>
+      <span class="vc-tooltip-anchor">
+        <span class="vc-tag vc-tag--lg mode-tag" id="mode-tag" data-mode="simulation" tabindex="0" aria-describedby="tip-mode"><span id="mode-text">SIMULATION</span></span>
+        <span class="vc-tooltip vc-tooltip--bottom" role="tooltip" id="tip-mode">A scripted run of the agent through the real rules and engine: no model is called. Run it live, on the first screen, calls Claude with your own key.</span>
+      </span>
+      <button type="button" class="vc-button vc-button--secondary" id="btn-guide" data-vc-guide-open="guide"><span class="vc-icon vc-icon--info" aria-hidden="true"></span>How it works</button>
       <span class="vc-tooltip-anchor">
         <button type="button" class="vc-icon-button" data-vc-theme-toggle aria-labelledby="tip-theme"><span class="vc-icon vc-icon--moon vc-when-light" aria-hidden="true"></span><span class="vc-icon vc-icon--sun vc-when-dark" aria-hidden="true"></span></button>
-        <span class="vc-tooltip vc-tooltip--bottom" role="tooltip" id="tip-theme">Dark theme</span>
+        <span class="vc-tooltip vc-tooltip--bottom" role="tooltip" id="tip-theme">Dark or light theme</span>
       </span>
     </div>
+    <!-- The four key figures answer first: before anything runs they show the default case as the engine
+         works it out (js/app.js runs the case's script once in the background and fills them in). -->
     <section class="kpis" aria-label="Key figures">
-      <article class="vc-stat kpi" id="kpi-cost" data-vc-kpi="Cost avoided">
-        <p class="vc-stat__label">Cost avoided</p>
-        <p class="vc-stat__value"><span class="kpi-value">€0</span><span class="vc-stat__unit kpi-unit">a year</span></p>
-        <p class="vc-stat__note kpi-note">nothing costed yet</p>
+      <article class="vc-stat kpi" id="kpi-cost" data-vc-kpi="At stake a year" data-state="risk">
+        <p class="vc-stat__label">At stake a year</p>
+        <p class="vc-stat__value"><s class="vc-stat__was kpi-was" hidden></s><span class="vc-visually-hidden kpi-now" hidden>, now </span><span class="kpi-value">€10,293</span><span class="vc-stat__unit kpi-unit"></span></p>
+        <p class="vc-stat__note kpi-note">if nothing changes</p>
       </article>
-      <article class="vc-stat kpi" id="kpi-fixed" data-vc-kpi="Records fixed">
+      <article class="vc-stat kpi" id="kpi-fixed" data-vc-kpi="Records fixed" data-state="idle">
         <p class="vc-stat__label">Records fixed</p>
-        <p class="vc-stat__value"><span class="kpi-value">0</span><span class="vc-stat__unit kpi-unit"></span></p>
-        <p class="vc-stat__note kpi-note">nothing scanned yet</p>
+        <p class="vc-stat__value"><s class="vc-stat__was kpi-was" hidden></s><span class="vc-visually-hidden kpi-now" hidden>, now </span><span class="kpi-value">0</span><span class="vc-stat__unit kpi-unit">of 23</span></p>
+        <p class="vc-stat__note kpi-note">€475,350 of orders</p>
       </article>
-      <article class="vc-stat kpi" id="kpi-time" data-vc-kpi="Detection → decision">
+      <article class="vc-stat kpi" id="kpi-time" data-vc-kpi="Detection → decision" data-state="idle">
         <p class="vc-stat__label">Detection → decision</p>
-        <p class="vc-stat__value"><span class="kpi-value">0:00</span><span class="vc-stat__unit kpi-unit">min</span></p>
-        <p class="vc-stat__note kpi-note">starts with the scan</p>
+        <p class="vc-stat__value"><s class="vc-stat__was kpi-was" hidden></s><span class="vc-visually-hidden kpi-now" hidden>, now </span><span class="kpi-value">0:00</span><span class="vc-stat__unit kpi-unit">min</span></p>
+        <p class="vc-stat__note kpi-note">oldest waited 62 days</p>
       </article>
-      <article class="vc-stat kpi" id="kpi-session" data-vc-kpi="Session cost">
+      <article class="vc-stat kpi" id="kpi-session" data-vc-kpi="Session cost" data-state="idle">
         <p class="vc-stat__label">Session cost</p>
-        <p class="vc-stat__value"><span class="kpi-value">€0.00</span><span class="vc-stat__unit kpi-unit"></span></p>
-        <p class="vc-stat__note kpi-note">no run yet</p>
+        <p class="vc-stat__value"><s class="vc-stat__was kpi-was" hidden></s><span class="vc-visually-hidden kpi-now" hidden>, now </span><span class="kpi-value">≈ €0.10</span><span class="vc-stat__unit kpi-unit"></span></p>
+        <p class="vc-stat__note kpi-note">estimate if run live</p>
       </article>
     </section>
   </header>
 
-  <nav class="stepbar" aria-label="Steps of the demo">
-    <button type="button" class="vc-button vc-button--ghost stepbar-back" id="btn-back"><span class="vc-icon vc-icon--chevron-left" aria-hidden="true"></span>Back</button>
-    <ol class="vc-stepper steps" id="steps"></ol>
-    <button type="button" class="vc-button vc-button--danger stepbar-stop" id="btn-stop" hidden><span class="vc-icon vc-icon--stop" aria-hidden="true"></span>Stop</button>
-    <button type="button" class="vc-button stepbar-next" id="btn-next">Next<span class="vc-icon vc-icon--chevron-right" aria-hidden="true"></span></button>
-  </nav>
-
-  <main id="stage" class="stage" tabindex="-1"></main>
-
-  <footer class="app-footer">
+  <div class="intro">
+    <p class="intro-text">An AI agent turns a tip about wrong purchasing data into a costed fix for you to approve, on fictional data, and sends nothing.</p>
     <p class="vc-byline">
       <span class="vc-byline__label">Built by</span>
-      <span class="vc-byline__person"><span class="vc-avatar vc-avatar--xs"><img src="vici/assets/brand/portrait-96.jpg" alt="" width="96" height="96"></span><span class="vc-byline__name">Victor Pflüger</span></span>
-      <span class="vc-byline__links">
-        <a class="vc-byline__icon" href="https://www.linkedin.com/in/victorpflueger" target="_blank" rel="author noopener" aria-label="Victor Pflüger on LinkedIn (opens in a new tab)"><img class="vc-platform-mark" src="vici/assets/marks/linkedin.png" alt="" width="840" height="779"></a>
-        <span class="vc-tooltip-anchor">
-          <a class="vc-byline__icon" href="https://victorpflueger.github.io/VIP/index.html" target="_blank" rel="author noopener" aria-label="Victor Pflüger's website (opens in a new tab)" aria-describedby="tip-website"><span class="vc-icon vc-icon--globe-hex" aria-hidden="true"></span></a>
-          <span class="vc-tooltip" role="tooltip" id="tip-website">Website</span>
-        </span>
+      <a class="vc-byline__person" href="https://www.linkedin.com/in/victorpflueger" rel="author noopener" target="_blank">
+        <span class="vc-avatar vc-avatar--xs"><img src="vici/assets/brand/portrait-96.jpg" alt="" width="96" height="96"></span>
+        <span class="vc-byline__name">Victor Pflüger</span>
+        <img class="vc-platform-mark" src="vici/assets/marks/linkedin.png" alt="" width="840" height="779">
+        <span class="vc-visually-hidden"> on LinkedIn (opens in a new tab)</span>
+      </a>
+      <span class="vc-tooltip-anchor">
+        <a class="vc-byline__icon" href="https://victorpflueger.github.io/VIP/index.html" rel="author noopener" target="_blank" aria-label="Victor Pflüger's website (opens in a new tab)"><span class="vc-icon vc-icon--globe-hex" aria-hidden="true"></span></a>
+        <span class="vc-tooltip vc-tooltip--bottom" aria-hidden="true">Website</span>
       </span>
     </p>
-    <p class="footer-notes">
-      <span class="vc-tag vc-tag--feature"><span class="vc-icon vc-icon--sparkle" aria-hidden="true"></span>You are interacting with an AI system</span>
-      <span class="vc-tag">Fictional company, no client data</span>
-      <span class="footer-safe"><span class="vc-icon vc-icon--shield" aria-hidden="true"></span>Nothing is ever sent</span>
-    </p>
-  </footer>
+  </div>
+
+  <nav class="stepbar" aria-label="Steps of the demo">
+    <button type="button" class="vc-button vc-button--secondary play" id="btn-play" data-state="play"><span class="vc-icon vc-icon--play" aria-hidden="true"></span><span id="play-text">Play</span></button>
+    <button type="button" class="vc-button vc-button--ghost stepbar-back" id="btn-back"><span class="vc-icon vc-icon--chevron-left" aria-hidden="true"></span>Back</button>
+    <ol class="vc-stepper steps" id="steps"></ol>
+    <button type="button" class="vc-button vc-button--danger stepbar-stop" id="btn-stop" hidden><span class="vc-icon vc-icon--stop" aria-hidden="true"></span>Stop the live run</button>
+    <span class="vc-tag vc-tag--feature ai-notice" id="live-notice" hidden><span class="vc-icon vc-icon--sparkle" aria-hidden="true"></span>You are interacting with an AI system</span>
+    <button type="button" class="vc-button vc-button--secondary stepbar-next" id="btn-next">Next<span class="vc-icon vc-icon--chevron-right" aria-hidden="true"></span></button>
+  </nav>
+
+  <p class="vc-visually-hidden" id="announce" aria-live="polite"></p>
+
+  <main id="stage" class="stage" tabindex="-1"></main>
 
   <div id="banners" class="banner-stack" aria-live="polite"></div>
 
   <!-- How it works: Vici's guide. vici.js builds the chapter rail and opens it once per browser tab;
-       js/app.js fills the figures from the engine (data-fact). The talk track follows the default case. -->
+       ?guide=0 keeps it closed, ?guide=present opens the talk track. js/app.js fills in the figures from
+       the engine's run of the default case (data-fig), so the guide cannot drift from the page. -->
   <dialog class="vc-dialog vc-guide" id="guide" aria-labelledby="guide-title" data-vc-guide data-vc-guide-auto data-vc-guide-count="{n} of {total}">
     <header class="vc-dialog__header">
       <h2 class="vc-dialog__title" id="guide-title">How the prototype works</h2>
@@ -106,41 +111,31 @@
         <h3>Turns a vague tip into a costed fix you approve</h3>
         <p class="vc-guide__lead">Bad purchasing data costs money, and nobody owns it. The agent finds the records behind a tip, why they are wrong, who can fix them and what each fix costs. A person decides.</p>
         <div class="vc-table-wrap"><table class="vc-table vc-table--compact guide-case">
-          <caption>The default case</caption>
+          <caption>The case it opens on</caption>
           <tbody>
-            <tr><th scope="row">The tip</th><td><span data-fact="lead.tip"></span></td></tr>
-            <tr><th scope="row">What the agent finds</th><td><span data-fact="lead.found"></span></td></tr>
-            <tr><th scope="row">What you decide</th><td><span data-fact="lead.choice"></span></td></tr>
+            <tr><th scope="row">The tip</th><td><span data-fig="lead.tip"></span></td></tr>
+            <tr><th scope="row">What the agent finds</th><td><span data-fig="lead.found"></span></td></tr>
+            <tr><th scope="row">What you decide</th><td><span data-fig="lead.choice"></span></td></tr>
           </tbody>
         </table></div>
       </section>
       <section class="vc-guide__chapter" data-vc-chapter="how" data-vc-nav="How it works">
-        <h3>Five steps, and a person decides twice</h3>
-        <p class="vc-guide__lead">Fifteen rules check the data. The agent works out the cause; a rule engine, not the AI, computes every figure. Simulation plays a scripted run through the same tools; Live runs Claude on your key.</p>
-        <ol class="guide-steps">
-          <li><strong>Spot.</strong> The rules flag the records behind the tip.</li>
-          <li><strong>Check.</strong> The agent tests a cause, corrects itself when the data disagree and names who must act.</li>
-          <li><strong>Calculate.</strong> The engine works out what the case costs.</li>
-          <li><strong>Propose.</strong> Fix paths next to doing nothing. You decide.</li>
-          <li><strong>Prepare.</strong> Drafts wait for your approval. Nothing is ever sent.</li>
-        </ol>
-      </section>
-      <section class="vc-guide__chapter" data-vc-chapter="figures" data-vc-nav="The four figures">
-        <h3>Four figures show what the agent brings</h3>
-        <p class="vc-guide__lead">They sit top right and change as you step through. The engine computes them, never the AI; only Session cost is an estimate in a simulation.</p>
+        <h3>Four figures follow the case from tip to decision</h3>
+        <p class="vc-guide__lead">Fifteen rules flag the records, the agent finds the cause and who must act, and an engine, not the AI, costs each fix.</p>
         <div class="vc-table-wrap"><table class="vc-table vc-table--compact guide-figures">
-          <caption>The key figures</caption>
+          <caption>Key figures</caption>
+          <thead><tr><th scope="col">Figure</th><th scope="col">What it measures</th><th scope="col">Paying too early</th></tr></thead>
           <tbody>
-            <tr><th scope="row">Cost avoided</th><td>Financing cost the approved fix avoids a year, from the engine. What it avoids at once shows below.</td></tr>
-            <tr><th scope="row">Records fixed</th><td>Records the approved fix corrects, from the engine. Projected until a re-scan no longer finds them.</td></tr>
-            <tr><th scope="row">Detection → decision</th><td>Time from the scan to your decision, measured on this page. Below it: how long the oldest of these exceptions has waited.</td></tr>
-            <tr><th scope="row">Session cost</th><td>What the run costs on Claude: measured in Live, estimated in a simulation from the run's own prompts and replies at list price.</td></tr>
+            <tr><th scope="row">At stake a year</th><td>Financing cost a year if nothing changes, and what your decision leaves</td><td><span data-fig="lead.yearly">€10,293</span>, then <span data-fig="lead.left">€0</span></td></tr>
+            <tr><th scope="row">Records fixed</th><td>Records the approved fix corrects, projected until a re-scan</td><td>0, then <span data-fig="lead.fixed">23 of 23</span></td></tr>
+            <tr><th scope="row">Detection → decision</th><td>From the scan to your decision, beside the oldest flag's wait</td><td>minutes here, against <span data-fig="lead.age">62 days</span></td></tr>
+            <tr><th scope="row">Session cost</th><td>The model calls: estimated here, measured in a live run</td><td>about <span data-fig="lead.session">€0.10</span></td></tr>
           </tbody>
         </table></div>
       </section>
       <section class="vc-guide__chapter" data-vc-chapter="production" data-vc-nav="With your data">
         <h3>With your data it runs on SAP and Microsoft</h3>
-        <p class="vc-guide__lead">This page stands in for the whole path. With real data, each step runs on a product your company may already use.</p>
+        <p class="vc-guide__lead">GlobalCorp SE is fictional. Start replays the agent through the real rules and engine; Run it live calls Claude on your key. With your data, each step runs on a product you may already use.</p>
         <figure class="guide-path">
           <div class="guide-path__row">
             <div class="guide-node"><span class="vc-cell vc-cell--sm" aria-hidden="true">1</span><strong>SAP S/4HANA or Ariba</strong><span>Orders, contracts, suppliers</span></div>
@@ -150,19 +145,16 @@
             <div class="guide-node"><span class="vc-cell vc-cell--sm" aria-hidden="true">5</span><strong>Power Automate, Teams</strong><span>Approvals and tasks</span></div>
             <div class="guide-node"><span class="vc-cell vc-cell--sm" aria-hidden="true">6</span><strong>SAP</strong><span>Carries out what people approved</span></div>
           </div>
-          <figcaption>GlobalCorp SE, its people, orders and figures are fictional: no client data.</figcaption>
         </figure>
       </section>
       <section class="vc-guide__chapter" data-vc-chapter="present" data-vc-nav="How to present">
         <h3>Show it in five minutes</h3>
-        <p class="vc-guide__lead">Six steps, five minutes in all. The guide closes on the tip; the arrow keys move between steps, and the figures top right move with them.</p>
+        <p class="vc-guide__lead">Four steps, five minutes. It plays by itself and stops where you act; Space pauses while you talk.</p>
         <ol class="vc-guide__path">
-          <li><strong>The tip.</strong> <span class="vc-guide__say">“Treasury thinks we pay Birmingham’s suppliers too early. That one sentence is all the agent gets.”</span> <span class="vc-guide__time">0.5 min</span></li>
-          <li><strong>Spot.</strong> <span class="vc-guide__say">“Two of fifteen rules flag <span data-fact="lead.n"></span> order lines worth <span data-fact="lead.spend"></span>. The oldest flag has waited <span data-fact="lead.age"></span> without a decision.”</span> <span class="vc-guide__time">1 min</span></li>
-          <li><strong>Check.</strong> <span class="vc-guide__say">“The agent suspects one supplier, tests it and corrects itself: one shared buying profile created all <span data-fact="lead.n"></span>.”</span> <span class="vc-guide__time">1 min</span></li>
-          <li><strong>Calculate.</strong> <span class="vc-guide__say">“Paying early cost <span data-fact="lead.past"></span> last year. Leave it, and it costs about <span data-fact="lead.yearly"></span> a year.”</span> <span class="vc-guide__time">0.5 min</span></li>
-          <li><strong>Propose: approve <span data-fact="lead.path"></span>.</strong> <span class="vc-guide__say">“You decide, not the AI. Watch the figures top right: Cost avoided goes to <span data-fact="lead.yearly"></span> a year, Records fixed to <span data-fact="lead.fixed"></span>.”</span> <span class="vc-guide__time">1 min</span></li>
-          <li><strong>Prepare.</strong> <span class="vc-guide__say">“Two drafts wait for approval and nothing is ever sent. Run live, this would cost about <span data-fact="lead.session"></span> in Session cost.”</span> <span class="vc-guide__time">1 min</span></li>
+          <li><strong>The tip: point at the four figures.</strong> <span class="vc-guide__say">“<span data-fig="lead.yearly">€10,293</span> a year at stake, <span data-fig="lead.n">23</span> records, a flag <span data-fig="lead.age">62 days</span> old.”</span> <span class="vc-guide__time">1 min</span></li>
+          <li><strong>Start the agent: Spot, Check, Calculate.</strong> <span class="vc-guide__say">“It suspects a supplier, then finds one buying profile behind all <span data-fig="lead.n">23</span>. Paying early cost <span data-fig="lead.past">€3,482</span> last year.”</span> <span class="vc-guide__time">2 min</span></li>
+          <li><strong>Propose: approve <span data-fig="lead.path">C</span>.</strong> <span class="vc-guide__say">“You decide, not the AI: at stake drops to <span data-fig="lead.left">€0</span>.”</span> <span class="vc-guide__time">1 min</span></li>
+          <li><strong>Prepare: approve both drafts.</strong> <span class="vc-guide__say">“Nothing leaves without a person. Live, this run costs about <span data-fig="lead.session">€0.10</span>.”</span> <span class="vc-guide__time">1 min</span></li>
         </ol>
       </section>
     </div>
@@ -180,7 +172,8 @@
       <button type="button" class="vc-icon-button" data-vc-close aria-label="Close"><span class="vc-icon vc-icon--close" aria-hidden="true"></span></button>
     </header>
     <div class="vc-dialog__body vc-stack">
-      <p>Claude works the same tip with real tool calls; the steps fill as it goes. You are interacting with an AI system, and nothing is ever sent.</p>
+      <p class="vc-tag vc-tag--feature ai-notice-full"><span class="vc-icon vc-icon--sparkle" aria-hidden="true"></span>You are interacting with an AI system</p>
+      <p>Claude works the same tip with real tool calls, and the steps fill as it goes. Nothing is ever sent.</p>
       <p id="live-current" class="vc-alert vc-alert--neutral" hidden></p>
       <div class="vc-field">
         <label class="vc-label" for="api-key-input">Your Anthropic API key</label>
@@ -197,7 +190,7 @@
     <footer class="vc-dialog__footer">
       <button type="button" class="vc-button vc-button--ghost" id="btn-forget-key" hidden>Forget key</button>
       <button type="button" class="vc-button vc-button--ghost" data-vc-close>Cancel</button>
-      <button type="button" class="vc-button" id="btn-live-start"><span class="vc-icon vc-icon--play" aria-hidden="true"></span>Check key and start</button>
+      <button type="button" class="vc-button" id="btn-live-start" data-vc-live><span class="vc-icon vc-icon--key" aria-hidden="true"></span>Check key and start</button>
     </footer>
   </dialog>
 

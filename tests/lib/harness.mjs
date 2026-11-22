@@ -8,6 +8,7 @@ import os from "node:os";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
 import { readFile, mkdir } from "node:fs/promises";
+import { existsSync } from "node:fs";
 
 /** The app folder: the parent of tests/. */
 export const APP_ROOT = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "..", "..");
@@ -20,9 +21,20 @@ export const MIME = {
 
 export const CORS = { "access-control-allow-origin": "*", "access-control-expose-headers": "*" };
 
-/** Case names given on the command line (empty: run all cases). */
-export const ONLY = process.argv.slice(2);
+/** Case names given on the command line (empty: run all cases); flags such as --require-vici are not cases. */
+export const ONLY = process.argv.slice(2).filter((a) => !a.startsWith("--"));
 export const wanted = (name) => ONLY.length === 0 || ONLY.includes(name);
+
+/**
+ * Vici's own checks must run: --require-vici, or any run on GitHub Actions. Without it a suite that needs a
+ * ViciDesign checkout and finds none says so and skips that part.
+ */
+export const REQUIRE_VICI = process.argv.includes("--require-vici") || process.env.GITHUB_ACTIONS === "true";
+
+/** A ViciDesign checkout: the folder in VICI_DIR, or ../ViciDesign next to this repository. */
+export function viciDir() {
+  return [process.env.VICI_DIR, path.resolve(APP_ROOT, "..", "ViciDesign")].filter(Boolean).find((d) => existsSync(path.join(d, "scripts", "lib", "guide.mjs"))) || null;
+}
 
 /** Where screenshots, downloads and result files go (outside the app folder by default). */
 export async function outDir(suite) {
